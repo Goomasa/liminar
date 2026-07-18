@@ -1,3 +1,6 @@
-#include <iostream>
+#include "util/utils.h"
 
-int main() { std::cout << "hello" << std::endl; }
+int main() {
+  Vec3 v(1, 2, 3);
+  v.display();
+}
