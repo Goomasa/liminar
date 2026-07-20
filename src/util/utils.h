@@ -11,8 +11,12 @@ constexpr double EPS = 1e-6;
 
 struct Vec3 {
   double x, y, z;
-  Vec3(const double x = 0, const double y = 0, const double z = 0)
-      : x(x), y(y), z(z) {}
+
+  Vec3() : x(0.), y(0.), z(0.) {}
+
+  Vec3(const double d) : x(d), y(d), z(d) {}
+
+  Vec3(const double x, const double y, const double z) : x(x), y(y), z(z) {}
 
   inline Vec3 operator+(const Vec3 &v) const {
     return Vec3(x + v.x, y + v.y, z + v.z);
@@ -50,6 +54,8 @@ struct Vec3 {
 
   inline double min() const { return fmin(x, fmin(y, z)); }
 
+  inline bool is_nan() const { return isnan(x) || isnan(y) || isnan(z); }
+
   inline double get_from_id(const uint32_t id) const {
     if (id == 0) {
       return x;
@@ -74,5 +80,15 @@ inline Vec3 cross(const Vec3 &v1, const Vec3 &v2) {
               v1.x * v2.y - v1.y * v2.x);
 }
 
+inline Vec3 vmin(const Vec3 &v1, const Vec3 &v2) {
+  return Vec3(fmin(v1.x, v2.x), fmin(v1.y, v2.y), fmin(v1.z, v2.z));
+}
+
+inline Vec3 vmax(const Vec3 &v1, const Vec3 &v2) {
+  return Vec3(fmax(v1.x, v2.x), fmax(v1.y, v2.y), fmax(v1.z, v2.z));
+}
+
 typedef Vec3 Color;
 typedef Vec3 Point3;
+
+inline double clamp01(const double d) { return fmin(1., fmax(d, 0.)); }
