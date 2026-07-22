@@ -1,9 +1,11 @@
 #pragma once
 
+#include "renderer/material.h"
 #include "renderer/ray.h"
 #include "scene/aabb.h"
 #include "util/utils.h"
 #include <cmath>
+#include <cstdint>
 
 class Shape {
 public:
@@ -48,4 +50,14 @@ public:
   AABB get_bbox() const override {
     return AABB(center - Vec3(radius), center + Vec3(radius));
   }
+};
+
+class Primitive {
+public:
+  Shape *shape;
+  Bxdf *bxdf;
+  uint32_t id;
+
+  Primitive(Shape *shape, Bxdf *bxdf, const uint32_t id)
+      : shape(shape), bxdf(bxdf), id(id) {}
 };
