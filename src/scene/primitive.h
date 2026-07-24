@@ -7,57 +7,63 @@
 #include <cmath>
 #include <cstdint>
 
-class Shape {
+class Triangle {
 public:
-  virtual bool hit(const Ray &ray, HitRecord *record) const = 0;
-  virtual AABB get_bbox() const = 0;
-};
+  Point3 p, q, r;
+  Vec3 normal; // wip: normals of each vertices
 
-class Sphere : public Shape {
-public:
-  double radius;
-  Point3 center;
+  Triangle(const Point3 &p, const Point3 &q, const Point3 &r)
+      : p(p), q(q), r(r) {
+    normal = normalize(cross(q - p, r - p));
+  }
 
-  Sphere(const double radius, const Point3 &center)
-      : radius(radius), center(center) {}
+  Triangle(const Point3 &p, const Point3 &q, const Point3 &r,
+           const Vec3 &normal)
+      : p(p), q(q), r(r), normal(normal) {}
 
-  bool hit(const Ray &ray, HitRecord *record) const override {
-    Vec3 oc = center - ray.org;
-    double b = dot(oc, ray.dir);
-    double disc = b * b - oc.len2() + radius * radius;
+  AABB get_bbox() const {
+    return AABB(vmin(p, vmin(q, r)), vmax(p, vmax(q, r)));
+  }
 
-    if (disc < 0.) {
+  bool hit(Ray &ray, HitRecord *record) const {
+    double dn = dot(ray.dir, normal);
+    if (fabs(dn) < EPS) {
       return false;
     }
 
-    double t1 = b - sqrt(disc), t2 = b + sqrt(disc), t;
+    double t = dot(normal, p - ray.org) / dn;
+    if (t > record->distance || t < 0) {
+      return false;
+    }
 
-    if (t1 > 0.) {
-      t = t1;
-    } else if (t2 > 0.) {
-      t = t2;
-    } else {
+    Point3 pos = ray.org + t * ray.dir;
+    Vec3 p_pos = pos - p, pq = q - p, pr = r - p;
+    double u = dot(cross(pr, p_pos), normal) / dot(cross(pr, pq), normal);
+    double v = dot(cross(pq, p_pos), normal) / dot(cross(pq, pr), normal);
+    if (u + v > 1. || u < 0 || v < 0) {
       return false;
     }
 
     record->distance = t;
-    record->hitpoint = ray.org + ray.dir * t;
-    record->normal = normalize(ray.dir * t - oc);
+    record->hitpoint = pos;
+    record->normal = normal;
 
     return true;
-  }
-
-  AABB get_bbox() const override {
-    return AABB(center - Vec3(radius), center + Vec3(radius));
   }
 };
 
 class Primitive {
 public:
-  Shape *shape;
+  Triangle shape;
   Bxdf *bxdf;
   uint32_t id;
 
-  Primitive(Shape *shape, Bxdf *bxdf, const uint32_t id)
+  Primitive(Triangle shape, Bxdf *bxdf, const uint32_t id)
       : shape(shape), bxdf(bxdf), id(id) {}
+
+  void hit(Ray &ray, HitRecord *record) const {
+    if (shape.hit(ray, record)) {
+      record->id = id;
+    }
+  }
 };

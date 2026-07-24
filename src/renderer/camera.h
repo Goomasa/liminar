@@ -9,6 +9,7 @@
 
 class Camera {
 public:
+  virtual ~Camera() = default;
   virtual std::tuple<uint32_t, uint32_t> get_resolution() const = 0;
   virtual double get_coefficient(const Ray &ray,
                                  const Point3 &pixel_pos) const = 0;
@@ -34,7 +35,7 @@ public:
 
     sensor_u = normalize(cross(sensor_dir, Vec3(0, 1, 0)));
     sensor_v = normalize(cross(sensor_dir, sensor_u));
-    sensor_corner = sensor_dir - sensor_u * sensor_width / 2. -
+    sensor_corner = sensor_center - sensor_u * sensor_width / 2. -
                     sensor_v * sensor_height / 2.;
 
     sensitivity = w_scale / (pixel_width * pixel_height);

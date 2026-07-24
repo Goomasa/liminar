@@ -1,15 +1,13 @@
-#include "util/image.h"
-#include "util/utils.h"
+#include "renderer/camera.h"
+#include "renderer/renderer.h"
+#include "scene/scene.h"
 
 int main() {
-  uint32_t w = 300, h = 300;
-  std::vector<Color> vec(w * h);
+  Scene scene = Scene();
+  scene.load_obj("models/test-box.obj");
+  PinholeModel camera =
+      PinholeModel(400, 400, Point3(0, 25, 100), 30, Vec3(0, 0, -1), 30, 100);
 
-  for (uint32_t v = 0; v < h; v++) {
-    for (uint32_t u = 0; u < w; u++) {
-      vec[w * v + u] = Color((double)u / w, (double)v / h, 1.);
-    }
-  }
-
-  save_ppm("sample.ppm", vec, w, h);
+  Renderer renderer = Renderer(&scene, &camera);
+  renderer.test_render();
 }

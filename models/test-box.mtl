@@ -1,0 +1,59 @@
+newmtl Left
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 0.1 0.1 1.0
+Ks 0.0 0.0 0.0
+Ke 0.0 0.0 0.0
+Ni 1.0
+d 1.0
+illum 0
+
+newmtl Right
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 0.1
+Ks 0.0 0.0 0.0
+Ke 0.0 0.0 0.0
+Ni 1.0
+d 1.0
+illum 0
+
+newmtl Floor
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ke 0.0 0.0 0.0
+Ni 1.0
+d 1.0
+illum 0
+
+newmtl Ceiling
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ke 0.0 0.0 0.0
+Ni 1.0
+d 1.0
+illum 0
+
+newmtl Back
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 0.1 0.1 0.1
+Ks 0.0 0.0 0.0
+Ke 0.0 0.0 0.0
+Ni 1.0
+d 1.0
+illum 0
+
+newmtl Light
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ke 40.0 40.0 40.0
+Ni 1.0
+d 1.0
+illum 0

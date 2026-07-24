@@ -4,6 +4,7 @@
 
 class Bxdf {
 public:
+  virtual ~Bxdf() = default;
   virtual Color eval() const = 0;
 };
 

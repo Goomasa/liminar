@@ -17,4 +17,9 @@ struct HitRecord {
   uint32_t id;
 
   HitRecord() : distance(INF), hitpoint(Point3()), normal(Vec3()), id(-1) {}
+
+  void reset() {
+    distance = INF;
+    id = -1;
+  }
 };
