@@ -1,4 +1,10 @@
-add_executable(liminar main.cpp)
+set(exe_file
+    main.cpp
+    renderer/material.cpp
+    renderer/integrator.cpp
+    scene/scene.cpp
+
+add_executable(liminar ${exe_file})
 
 target_include_directories(liminar PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}

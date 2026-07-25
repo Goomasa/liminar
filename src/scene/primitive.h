@@ -56,14 +56,24 @@ class Primitive {
 public:
   Triangle shape;
   Bxdf *bxdf;
+  Color emission;
   uint32_t id;
 
+  Primitive(Triangle shape, const uint32_t id)
+      : shape(shape), emission(Color()), id(id) {}
+
   Primitive(Triangle shape, Bxdf *bxdf, const uint32_t id)
-      : shape(shape), bxdf(bxdf), id(id) {}
+      : shape(shape), bxdf(bxdf), emission(Color()), id(id) {}
+
+  Primitive(Triangle shape, Bxdf *bxdf, const Color &emission,
+            const uint32_t id)
+      : shape(shape), bxdf(bxdf), emission(emission), id(id) {}
 
   void hit(Ray &ray, HitRecord *record) const {
     if (shape.hit(ray, record)) {
       record->id = id;
     }
   }
+
+  bool is_light() const { return emission.len() > EPS; }
 };
