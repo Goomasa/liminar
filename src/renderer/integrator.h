@@ -10,7 +10,7 @@ constexpr uint32_t MAX_DEPTH = 10;
 
 class Integrator {
 public:
-  Integrator() : value(0.) {}
+  Integrator() : value(Color()) {}
 
   Color get_value() const {
     if (is_valid(value)) {

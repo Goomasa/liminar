@@ -1,6 +1,7 @@
 #include "scene.h"
-#include "renderer/material.h"
-#include "scene/primitive.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tinyobjloader/tiny_obj_loader.h"
 
 void Scene::load_obj(const std::string &filename) {
   tinyobj::ObjReaderConfig config;
@@ -50,13 +51,19 @@ void Scene::load_obj(const std::string &filename) {
             cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
       }
 
-      std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color());
-
       Primitive prim =
           Primitive(Triangle(vertices[0], vertices[1], vertices[2], normal),
-                    bxdf.get(), primitives.size());
+                    primitives.size());
 
-      bxdfs.emplace_back(std::move(bxdf));
+      uint32_t material_id = shape.mesh.material_ids[f];
+      if (material_id < 0) {
+        std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color());
+        prim.bxdf = bxdf.get();
+        bxdfs.emplace_back(std::move(bxdf));
+      } else {
+        load_mtl(materials[material_id], &prim);
+      }
+
       primitives.emplace_back(std::move(prim));
 
       offset += 3;
@@ -64,7 +71,7 @@ void Scene::load_obj(const std::string &filename) {
   }
 }
 
-void Scene::load_mtl(const tinyobj::material_t &material, Primitive *prim) {
+void Scene::load_mtl(const auto &material, Primitive *prim) {
   const Color kd =
       Vec3(material.diffuse[0], material.diffuse[1], material.diffuse[2]);
 

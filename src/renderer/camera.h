@@ -13,9 +13,9 @@ public:
   virtual std::tuple<uint32_t, uint32_t> get_resolution() const = 0;
   virtual double get_coefficient(const Ray &ray,
                                  const Point3 &pixel_pos) const = 0;
-  virtual Ray get_first_ray(Random *rnd, uint32_t px_u, uint32_t px_v,
-                            uint32_t spx_u, uint32_t spx_v,
-                            uint32_t superpx_num) const = 0;
+  virtual Ray get_first_ray(Random *rnd, const Point3 &pixel_pos) const = 0;
+  virtual Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
+                               uint32_t spx_v, uint32_t superpx_num) const = 0;
 };
 
 class PinholeModel : public Camera {
@@ -47,19 +47,26 @@ public:
 
   double get_coefficient(const Ray &ray,
                          const Point3 &pixel_pos) const override {
-    double cos_theta = dot(ray.dir, sensor_dir);
-    return sensitivity * cos_theta / (pixel_width * pixel_height);
+    double pixel_area = pixel_width * pixel_height;
+    double g_term = pow(dot(sensor_dir, normalize(hole_pos - pixel_pos)), 2) /
+                    (hole_pos - pixel_pos).len2();
+
+    return sensitivity * g_term * pixel_area;
   }
 
-  Ray get_first_ray(Random *rnd, uint32_t px_u, uint32_t px_v, uint32_t spx_u,
-                    uint32_t spx_v, uint32_t superpx_num) const override {
+  Ray get_first_ray(Random *rnd, const Point3 &pixel_pos) const override {
+    Point3 org = pixel_pos;
+    Vec3 dir = normalize(hole_pos - org);
+    return Ray(org, dir);
+  }
+
+  Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
+                       uint32_t spx_v, uint32_t superpx_num) const override {
     double du =
         pixel_width * (px_u + ((double)spx_u + 0.5) / (double)superpx_num);
     double dv =
         pixel_height * (px_v + ((double)spx_v + 0.5) / (double)superpx_num);
-    Point3 org = sensor_corner + sensor_u * du + sensor_v * dv;
-    Vec3 dir = normalize(hole_pos - org);
-    return Ray(org, dir);
+    return sensor_corner + sensor_u * du + sensor_v * dv;
   }
 
 private:
@@ -93,7 +100,7 @@ public:
 
     sensor_u = normalize(cross(sensor_dir, Vec3(0, 1, 0)));
     sensor_v = normalize(cross(sensor_dir, sensor_u));
-    sensor_corner = sensor_dir - sensor_u * sensor_width / 2. -
+    sensor_corner = sensor_center - sensor_u * sensor_width / 2. -
                     sensor_v * sensor_height / 2.;
 
     lens_center = sensor_center + sensor_dir * sensor_to_lens;
@@ -107,28 +114,30 @@ public:
 
   double get_coefficient(const Ray &ray,
                          const Point3 &pixel_pos) const override {
-    double lens_area = 4. * PI * lens_radius * lens_radius;
+    double lens_area = PI * lens_radius * lens_radius;
     double pixel_area = pixel_width * pixel_height;
     double g_term = pow(dot(sensor_dir, normalize(ray.org - pixel_pos)), 2) /
                     (ray.org - pixel_pos).len2();
 
-    return g_term / (lens_area * pixel_area);
+    return sensitivity * g_term * lens_area * pixel_area;
   }
 
-  Ray get_first_ray(Random *rnd, uint32_t px_u, uint32_t px_v, uint32_t spx_u,
-                    uint32_t spx_v, uint32_t superpx_num) const override {
-    double du =
-        pixel_width * (px_u + ((double)spx_u + 0.5) / (double)superpx_num);
-    double dv =
-        pixel_height * (px_v + ((double)spx_v + 0.5) / (double)superpx_num);
-    Point3 pixel_pos = sensor_corner + sensor_u * du + sensor_v * dv;
-
+  Ray get_first_ray(Random *rnd, const Point3 &pixel_pos) const override {
     Point3 lens_pos = sample_lens(rnd);
     Point3 objplane_pos = lens_center + (lens_center - pixel_pos) *
                                             (focal_distance / sensor_to_lens);
     Vec3 dir = normalize(objplane_pos - lens_pos);
 
     return Ray(lens_pos, dir);
+  }
+
+  Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
+                       uint32_t spx_v, uint32_t superpx_num) const override {
+    double du =
+        pixel_width * (px_u + ((double)spx_u + 0.5) / (double)superpx_num);
+    double dv =
+        pixel_height * (px_v + ((double)spx_v + 0.5) / (double)superpx_num);
+    return sensor_corner + sensor_u * du + sensor_v * dv;
   }
 
 private:
