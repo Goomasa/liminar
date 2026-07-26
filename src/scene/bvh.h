@@ -21,8 +21,8 @@ public:
   BVH() {}
 
   BVH(const std::vector<Primitive> &prims) {
-    // basic_builder(prims);
-    sah_builder(prims);
+    basic_builder(prims);
+    // sah_builder(prims);
     tree.shrink_to_fit();
     std::cout << "constructed" << std::endl;
   }

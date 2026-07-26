@@ -3,9 +3,10 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tinyobjloader/tiny_obj_loader.h"
 
-void Scene::load_obj(const std::string &filename) {
+void Scene::load_obj(const std::string &filename, const double scale,
+                     const Vec3 &tr) {
   tinyobj::ObjReaderConfig config;
-  config.mtl_search_path = "models/";
+  config.mtl_search_path = "";
   config.triangulate = true;
 
   tinyobj::ObjReader reader;
@@ -27,8 +28,7 @@ void Scene::load_obj(const std::string &filename) {
 
     for (uint32_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
       Point3 vertices[3];
-      Vec3 normals[3] = {Vec3(-INF, -INF, -INF), Vec3(-INF, -INF, -INF),
-                         Vec3(-INF, -INF, -INF)};
+      Vec3 normals[3] = {Vec3(-INF), Vec3(-INF), Vec3(-INF)};
 
       for (uint8_t v = 0; v < 3; v++) {
         const auto idx = shape.mesh.indices[offset + v];
@@ -41,7 +41,7 @@ void Scene::load_obj(const std::string &filename) {
         const double ny = (double)attrib.normals[3 * idx.normal_index + 1];
         const double nz = (double)attrib.normals[3 * idx.normal_index + 2];
 
-        vertices[v] = Point3((double)vx, (double)vy, (double)vz);
+        vertices[v] = Point3((double)vx, (double)vy, (double)vz) * scale + tr;
         normals[v] = Vec3(nx, ny, nz);
       }
 
@@ -55,9 +55,9 @@ void Scene::load_obj(const std::string &filename) {
           Primitive(Triangle(vertices[0], vertices[1], vertices[2], normal),
                     primitives.size());
 
-      uint32_t material_id = shape.mesh.material_ids[f];
+      int32_t material_id = shape.mesh.material_ids[f];
       if (material_id < 0) {
-        std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color());
+        std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
         prim.bxdf = bxdf.get();
         bxdfs.emplace_back(std::move(bxdf));
       } else {
@@ -69,6 +69,7 @@ void Scene::load_obj(const std::string &filename) {
       offset += 3;
     }
   }
+  std::cout << "loaded: " << filename << std::endl;
 }
 
 void Scene::load_mtl(const auto &material, Primitive *prim) {

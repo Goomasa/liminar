@@ -16,11 +16,15 @@ struct Scene {
 
   Scene(const Color &background) : background(background) {}
 
-  void load_obj(const std::string &filename);
+  void load_obj(const std::string &filename, const double scale = 1.,
+                const Vec3 &tr = Vec3());
 
   void load_mtl(const auto &material, Primitive *prim);
 
-  void construct_bvh() { bvh = BVH(primitives); }
+  void construct_bvh() {
+    std::cout << primitives.size() << " primitives" << std::endl;
+    bvh = BVH(primitives);
+  }
 
   bool test_intersect(Ray &ray, HitRecord *record) const {
     for (const Primitive &prim : primitives) {

@@ -20,5 +20,5 @@ Vec3 Lambertian::sample(const Vec3 &in, const Vec3 &normal, Random *rnd) const {
 }
 
 double Lambertian::sampling_pdf(const Vec3 &out, const Vec3 &normal) const {
-  return fmax(dot(out, normal), 0.) * PI_INV;
+  return fmax(dot(out, normal), 0.001) * PI_INV;
 }

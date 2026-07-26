@@ -6,8 +6,10 @@
 struct Ray {
   Point3 org;
   Vec3 dir;
+  int32_t prev_id;
 
-  Ray(const Point3 &org, const Vec3 &dir) : org(org), dir(dir) {}
+  Ray(const Point3 &org, const Vec3 &dir, const uint32_t prev = -1)
+      : org(org), dir(dir), prev_id(prev) {}
 };
 
 struct HitRecord {

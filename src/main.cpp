@@ -4,8 +4,10 @@
 #include <chrono>
 
 int main() {
-  Scene scene = Scene(Color(0.2, 0.2, 0.2));
-  scene.load_obj("models/test-box.obj");
+  Scene scene = Scene(Color(0.9));
+  // scene.load_obj("models/cornell-box/CornellBox-Sphere.obj", 20.,
+  //               Vec3(0, 5, 0));
+  scene.load_obj("models/test-box/test-box.obj");
 
   PinholeModel camera =
       PinholeModel(300, 300, Point3(0, 25, 120), 30, Vec3(0, 0, -1), 40, 500.);
@@ -15,12 +17,13 @@ int main() {
                                42, 2, 96, 100);
   */
 
-  Renderer renderer = Renderer(&scene, &camera, 4, 4);
+  Renderer renderer = Renderer(&scene, &camera, 8, 4);
 
   std::chrono::system_clock::time_point start, end;
   start = std::chrono::system_clock::now();
 
   renderer.render();
+  // renderer.test_render();
 
   end = std::chrono::system_clock::now();
   double elapsed =

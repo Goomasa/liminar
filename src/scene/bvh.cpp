@@ -47,8 +47,8 @@ void BVH::basic_builder(const std::vector<Primitive> &prims) {
 
     tree.emplace_back(BVHNode(scene_bbox(left_prims), -1, 0));
     tree.emplace_back(scene_bbox(right_prims), -1, 0);
-    tmp_prims_tree.emplace_back(left_prims);
-    tmp_prims_tree.emplace_back(right_prims);
+    tmp_prims_tree.emplace_back(std::move(left_prims));
+    tmp_prims_tree.emplace_back(std::move(right_prims));
   }
 }
 
@@ -105,7 +105,7 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
     tree.emplace_back(BVHNode(scene_bbox(left_prims), -1, 0));
     tree.emplace_back(scene_bbox(right_prims), -1, 0);
-    tmp_prims_tree.emplace_back(left_prims);
-    tmp_prims_tree.emplace_back(right_prims);
+    tmp_prims_tree.emplace_back(std::move(left_prims));
+    tmp_prims_tree.emplace_back(std::move(right_prims));
   }
 }

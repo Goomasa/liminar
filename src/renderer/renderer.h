@@ -22,7 +22,8 @@ public:
     auto [resolution_u, resolution_v] = camera->get_resolution();
     std::vector<Color> image(resolution_u * resolution_v);
     uint32_t pixel_num = resolution_u * resolution_v;
-    uint32_t total = supersamples * supersamples * samples_per_spx;
+    double total_inv =
+        1. / (double)(supersamples * supersamples * samples_per_spx);
 
     HitRecord record = HitRecord();
 
@@ -48,7 +49,7 @@ public:
             }
           }
         }
-        image[idx] = accumlated / total;
+        image[idx] = accumlated * total_inv;
       }
       std::cout << v << std::endl;
     }
@@ -85,8 +86,9 @@ public:
 
         image[idx] = accumlated / 4.;
       }
+      std::cout << v << std::endl;
     }
 
-    // save_ppm("test.ppm", image, resolution_u, resolution_v);
+    save_ppm("test.ppm", image, resolution_u, resolution_v);
   }
 };

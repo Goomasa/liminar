@@ -6,9 +6,9 @@ inline double roullete(const uint32_t depth, const Color &throughput) {
   if (depth < DEPTH) {
     return 1.0;
   } else if (depth > MAX_DEPTH) {
-    return throughput.max() * pow(0.5, depth - MAX_DEPTH);
+    return clamp01(throughput.max()) * pow(0.5, depth - MAX_DEPTH);
   } else {
-    return throughput.max();
+    return clamp01(throughput.max());
   }
 }
 
@@ -22,7 +22,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
   for (uint32_t depth = 0;; depth++) {
     record.reset();
     if (!scene->intersect(now_ray, &record)) {
-      value = value + throughput * scene->background / pdf;
+      value = throughput * scene->background / pdf;
       return;
     }
 
@@ -43,10 +43,9 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     }
 
     Vec3 next_dir = prim->bxdf->sample(now_ray.dir, orienting_normal, rnd);
-    Point3 next_org = record.hitpoint + EPS * orienting_normal;
-    now_ray = Ray(next_org, next_dir);
-    throughput =
-        throughput * prim->bxdf->eval() * dot(next_dir, orienting_normal);
+    now_ray = Ray(record.hitpoint, next_dir, record.id);
+    throughput = throughput * prim->bxdf->eval() *
+                 fmax(dot(next_dir, orienting_normal), 0.);
     pdf *= prim->bxdf->sampling_pdf(next_dir, orienting_normal);
   }
 }
