@@ -22,7 +22,7 @@ public:
       : p(p), q(q), r(r), normal(normal) {}
 
   AABB get_bbox() const {
-    return AABB(vmin(p, vmin(q, r)), vmax(p, vmax(q, r)));
+    return AABB(vmin(p, vmin(q, r)), vmax(p, vmax(q, r))).fix();
   }
 
   bool hit(Ray &ray, HitRecord *record) const {
@@ -50,6 +50,8 @@ public:
 
     return true;
   }
+
+  Point3 get_centroid() const { return (p + q + r) / 3.; }
 };
 
 class Primitive {

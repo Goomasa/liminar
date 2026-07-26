@@ -21,7 +21,8 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
 
   for (uint32_t depth = 0;; depth++) {
     record.reset();
-    if (!scene->test_intersect(now_ray, &record)) {
+    if (!scene->intersect(now_ray, &record)) {
+      value = value + throughput * scene->background / pdf;
       return;
     }
 

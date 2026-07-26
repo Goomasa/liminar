@@ -3,6 +3,7 @@ set(exe_file
     renderer/material.cpp
     renderer/integrator.cpp
     scene/scene.cpp
+    scene/bvh.cpp
 )
 
 add_executable(liminar ${exe_file})

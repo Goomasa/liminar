@@ -14,7 +14,9 @@ public:
   Renderer(Scene *scene, Camera *camera, const uint32_t supersamples,
            const uint32_t samples_per_spx)
       : scene(scene), camera(camera), supersamples(supersamples),
-        samples_per_spx(samples_per_spx) {}
+        samples_per_spx(samples_per_spx) {
+    scene->construct_bvh();
+  }
 
   void render() const {
     auto [resolution_u, resolution_v] = camera->get_resolution();

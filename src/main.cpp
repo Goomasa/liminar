@@ -1,9 +1,10 @@
 #include "renderer/camera.h"
 #include "renderer/renderer.h"
 #include "scene/scene.h"
+#include <chrono>
 
 int main() {
-  Scene scene = Scene();
+  Scene scene = Scene(Color(0.2, 0.2, 0.2));
   scene.load_obj("models/test-box.obj");
 
   PinholeModel camera =
@@ -14,6 +15,16 @@ int main() {
                                42, 2, 96, 100);
   */
 
-  Renderer renderer = Renderer(&scene, &camera, 4, 2);
+  Renderer renderer = Renderer(&scene, &camera, 4, 4);
+
+  std::chrono::system_clock::time_point start, end;
+  start = std::chrono::system_clock::now();
+
   renderer.render();
+
+  end = std::chrono::system_clock::now();
+  double elapsed =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
+  std::cout << elapsed / 1000 << " s" << std::endl;
 }

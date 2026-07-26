@@ -42,6 +42,11 @@ struct Vec3 {
     return Vec3(x / v.x, y / v.y, z / v.z);
   }
 
+  inline double operator[](const uint8_t i) const {
+    // i=0,1,2
+    return (&x)[i];
+  }
+
   inline const double len2() const { return x * x + y * y + z * z; }
 
   inline const double len() const { return std::sqrt(this->len2()); }
@@ -56,15 +61,7 @@ struct Vec3 {
 
   inline bool is_nan() const { return isnan(x) || isnan(y) || isnan(z); }
 
-  inline double get_from_id(const uint32_t id) const {
-    if (id == 0) {
-      return x;
-    } else if (id == 1) {
-      return y;
-    } else {
-      return z;
-    }
-  }
+  inline void set(const double d, const uint8_t i) { (&x)[i] = d; }
 };
 
 inline Vec3 operator*(const double d, const Vec3 &v) { return v * d; }
