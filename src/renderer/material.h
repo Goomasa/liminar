@@ -24,3 +24,18 @@ public:
 
   double sampling_pdf(const Vec3 &out, const Vec3 &normal) const override;
 };
+
+class Mirror : public Bxdf {
+public:
+  Color color;
+
+  Mirror(const Color &color) : color(color) {}
+
+  Color eval() const override;
+
+  Vec3 sample(const Vec3 &in, const Vec3 &normal, Random *rnd) const override;
+
+  double sampling_pdf(const Vec3 &out, const Vec3 &normal) const override {
+    return 1.; // Dirac-deita
+  }
+};

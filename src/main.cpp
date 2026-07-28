@@ -5,17 +5,16 @@
 
 int main() {
   Scene scene = Scene(Color(0.9));
-  // scene.load_obj("models/cornell-box/CornellBox-Sphere.obj", 20.,
-  //               Vec3(0, 5, 0));
-  scene.load_obj("models/test-box/test-box.obj");
+  scene.load_obj("models/cornell-box/CornellBox-Sphere.obj", 20.,
+                 Vec3(0, 5, 0));
+  // scene.load_obj("models/test-box/test-box.obj");
 
   PinholeModel camera =
       PinholeModel(300, 300, Point3(0, 25, 120), 30, Vec3(0, 0, -1), 40, 500.);
 
-  /*
-  LensModel camera = LensModel(400, 400, Point3(0, 25, 120), 30, Vec3(0, 0, -1),
-                               42, 2, 96, 100);
-  */
+  // LensModel camera = LensModel(400, 400, Point3(0, 25, 120), 30, Vec3(0, 0,
+  // -1),
+  //                            42, 2, 96, 100);
 
   Renderer renderer = Renderer(&scene, &camera, 8, 4);
 
