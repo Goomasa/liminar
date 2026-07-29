@@ -1,9 +1,11 @@
-#include "renderer/camera.h"
-#include "renderer/renderer.h"
-#include "scene/scene.h"
-#include <chrono>
+// #include "renderer/camera.h"
+// #include "renderer/renderer.h"
+// #include "scene/scene.h"
+// #include <chrono>
 
+#include "config/lexer.h"
 int main() {
+  /*
   Scene scene = Scene(Color(0.9));
   scene.load_obj("models/cornell-box/CornellBox-Sphere.obj", 20.,
                  Vec3(0, 5, 0));
@@ -29,4 +31,7 @@ int main() {
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
           .count();
   std::cout << elapsed / 1000 << " s" << std::endl;
+  */
+  std::string code = "{123true [] }, 0.123";
+  test_tokenize(code);
 }

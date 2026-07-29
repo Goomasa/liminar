@@ -1,0 +1,41 @@
+{
+  "scene":{
+    "background":[0.9,0.9,0.9],
+    "models":{
+      "path":"models/cornell-box",
+      "scale":20,
+      "translation":[0,5,0]
+    }
+  },
+
+  "camera":{
+    "model":"pinhole",
+    "pinhole":{
+      "resolution-w":400,
+      "resolution-h":400,
+      "sensor-center":[0,25,120],
+      "sensor-width":30,
+      "sensor-dir":[0,0,-1],
+      "sensor-to-hole":40,
+      "w-scale":500
+    },
+
+    "lens":{
+      "resolution-w":400,
+      "resolution-h":400,
+      "sensor-center":[0,25,120],
+      "sensor-width":30,
+      "sensor-dir":[0,0,-1],
+      "sensor-to-lens":42,
+      "lens-radius":2,
+      "focal-distance":96,
+      "w-scale":100
+    }
+  },
+
+  "renderer":{
+    "supersamples":8,
+    "samples-per-superpixel":4,
+    "is-test":false
+  }
+}

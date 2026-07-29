@@ -4,6 +4,7 @@ set(exe_file
     renderer/integrator.cpp
     scene/scene.cpp
     scene/bvh.cpp
+    config/lexer.cpp
 )
 
 add_executable(liminar ${exe_file})
