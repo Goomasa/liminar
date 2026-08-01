@@ -2,6 +2,8 @@
 
 #include "scene/aabb.h"
 #include "scene/primitive.h"
+#include <iostream>
+#include <vector>
 
 struct BVHNode {
   AABB bbox;

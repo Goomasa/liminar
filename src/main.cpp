@@ -3,7 +3,7 @@
 // #include "scene/scene.h"
 // #include <chrono>
 
-#include "config/lexer.h"
+#include "config/parser.h"
 int main() {
   /*
   Scene scene = Scene(Color(0.9));
@@ -32,6 +32,5 @@ int main() {
           .count();
   std::cout << elapsed / 1000 << " s" << std::endl;
   */
-  std::string code = "{123true [] }, 0.123";
-  test_tokenize(code);
+  test_parse("{\"scale\":-12.345,\"lens-radius\":20}");
 }

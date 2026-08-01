@@ -3,7 +3,6 @@
 #include "util/utils.h"
 #include <cstdio>
 #include <stdio.h>
-#include <sys/_types/_errno_t.h>
 
 inline bool is_valid(const Vec3 &v) { return !v.is_nan() && (v.min() >= 0.); }
 
@@ -17,7 +16,7 @@ inline void save_ppm(const std::string &filename,
   FILE *f;
 
 #ifdef _MSC_VER
-  errno_t error = fopen_s(&f, filename.c_str(), "wb");
+  auto error = fopen_s(&f, filename.c_str(), "wb");
   if (error != 0) {
     std::cout << "failed to write " << filename << std::endl;
     std::exit(1);

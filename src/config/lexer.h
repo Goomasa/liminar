@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional>
+#include <iostream>
 #include <queue>
 #include <string>
 
@@ -15,6 +15,7 @@ enum TokenType {
   LBracket,
   RBracket,
   Minus,
+  Colon
 };
 
 struct Token {
@@ -30,12 +31,36 @@ std::queue<Token> tokenize(std::string &code);
 
 void test_tokenize(std::string &code);
 
-template <typename T> inline std::optional<T> pop_front(std::queue<T> &q) {
+template <typename T>
+inline T exit_with_error(const std::string &err, const std::string &info = "") {
+  std::cout << err << info << std::endl;
+  exit(1);
+}
+
+template <typename T> inline T pop_front(std::queue<T> &q) {
   if (q.empty()) {
-    return std::nullopt;
+    return exit_with_error<T>("Queue is empty");
   } else {
     T t = q.front();
     q.pop();
     return t;
+  }
+}
+
+inline void consume(std::queue<Token> &tokens, const TokenType type) {
+  if (tokens.front().type == type) {
+    tokens.pop();
+    return;
+  } else {
+    exit_with_error<void>("no expected token");
+  }
+}
+
+inline std::string consume_str(std::queue<Token> &tokens) {
+  if (tokens.front().type == TokenType::String) {
+    Token token = pop_front<Token>(tokens);
+    return token.str;
+  } else {
+    return exit_with_error<std::string>("no expected token");
   }
 }

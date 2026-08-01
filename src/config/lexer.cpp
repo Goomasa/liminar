@@ -65,6 +65,10 @@ std::queue<Token> tokenize(std::string &code) {
       tokens.push(Token(TokenType::RBracket, "]"));
       code = code.substr(1);
     } break;
+    case ':': {
+      tokens.push(Token(TokenType::Colon, ":"));
+      code = code.substr(1);
+    } break;
     case '"': {
       code = code.substr(1);
       Token token = Token(TokenType::String, get_string(code));
@@ -81,8 +85,7 @@ std::queue<Token> tokenize(std::string &code) {
         std::string d = get_double(code);
         tokens.push(Token(TokenType::Double, d));
       } else {
-        std::cout << "failed to tokenize from " << code << std::endl;
-        exit(1);
+        exit_with_error<void>("failed to tokenize from ", code);
       }
     } break;
     }
@@ -94,7 +97,7 @@ std::queue<Token> tokenize(std::string &code) {
 void test_tokenize(std::string &code) {
   std::queue<Token> tokens = tokenize(code);
   while (!tokens.empty()) {
-    Token token = pop_front(tokens).value();
+    Token token = pop_front(tokens);
     std::cout << token.str << std::endl;
   }
 }

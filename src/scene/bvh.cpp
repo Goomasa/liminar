@@ -1,5 +1,7 @@
 #include "bvh.h"
 #include "scene/aabb.h"
+#include <algorithm>
+#include <vector>
 
 inline AABB scene_bbox(const std::vector<Primitive> &prims) {
   AABB bbox = AABB();
@@ -71,7 +73,7 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
     uint32_t partition = 1;
     uint8_t best_axis = 0;
     double min_area = INF;
-    double area_left[prims_in_box->size() - 1];
+    std::vector<double> area_left(prims_in_box->size() - 1);
 
     for (uint8_t axis = 0; axis < 3; axis++) {
       sort_primitives(prims_in_box, axis);
