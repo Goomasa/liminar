@@ -80,7 +80,7 @@ std::queue<Token> tokenize(std::string &code) {
         code = code.substr(4);
       } else if (code.substr(0, 5) == "false") {
         tokens.push(Token(TokenType::False, "false"));
-        code = code.substr(4);
+        code = code.substr(5);
       } else if (is_digit(code[0])) {
         std::string d = get_double(code);
         tokens.push(Token(TokenType::Double, d));

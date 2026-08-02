@@ -2,6 +2,7 @@ set(exe_file
     main.cpp
     renderer/material.cpp
     renderer/integrator.cpp
+    renderer/renderer.cpp
     scene/scene.cpp
     scene/bvh.cpp
     config/lexer.cpp

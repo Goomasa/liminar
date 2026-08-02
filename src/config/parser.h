@@ -1,7 +1,10 @@
 #pragma once
 
 #include "lexer.h"
+#include "util/utils.h"
+#include <fstream>
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -13,6 +16,17 @@ struct ObjectNode {
       data;
 
   ObjectNode() {}
+
+  template <typename T> T search_key(const std::string &key) {
+    auto d = data[key];
+    return get_data<T>(d);
+  }
+
+  template <typename T>
+  T search_key_safe(const std::string &key, const T &default_) {
+    auto d = data[key];
+    return get_data_safe<T>(d, default_);
+  }
 };
 
 typedef std::variant<double, bool, std::string, std::vector<double>, ObjectNode>
@@ -36,5 +50,28 @@ inline T get_data_safe(const Data &data, const T &default_) {
     return std::get<T>(data);
   } else {
     return default_;
+  }
+}
+
+inline ObjectNode load_config() {
+  std::ifstream ifs("render-config.json", std::ios::in);
+  if (!ifs) {
+    exit_with_error<void>("failed to open config");
+  }
+
+  std::string tmp, code;
+  while (std::getline(ifs, tmp)) {
+    code += tmp;
+  }
+
+  std::queue<Token> tokens = tokenize(code);
+  return parse_object(tokens);
+}
+
+inline Vec3 vector_to_vec3(const std::vector<double> v) {
+  if (v.size() != 3) {
+    return Vec3(1.);
+  } else {
+    return Vec3(v[0], v[1], v[2]);
   }
 }

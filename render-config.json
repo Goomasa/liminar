@@ -2,9 +2,9 @@
   "scene":{
     "background":[0.9,0.9,0.9],
     "models":{
-      "path":"models/cornell-box",
-      "scale":20,
-      "translation":[0,5,0]
+      "path":"models/test-box",
+      "scale":1.0,
+      "translation":[0,0,0]
     }
   },
 
@@ -34,8 +34,8 @@
   },
 
   "renderer":{
-    "supersamples":8,
-    "samples-per-superpixel":4,
+    "supersamples":4,
+    "samples-per-superpixel":2,
     "is-test":false
   }
 }

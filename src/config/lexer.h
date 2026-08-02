@@ -33,7 +33,7 @@ void test_tokenize(std::string &code);
 
 template <typename T>
 inline T exit_with_error(const std::string &err, const std::string &info = "") {
-  std::cout << err << info << std::endl;
+  std::cerr << err << info << std::endl;
   exit(1);
 }
 
