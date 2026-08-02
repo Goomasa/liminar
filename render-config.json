@@ -1,6 +1,6 @@
 {
   "scene":{
-    "background":[0.9,0.9,0.9],
+    "background":[0,0,0],
     "models":{
       "path":"models/test-box",
       "scale":1.0,
@@ -35,7 +35,7 @@
 
   "renderer":{
     "supersamples":4,
-    "samples-per-superpixel":2,
+    "samples-per-superpixel":4,
     "is-test":false
   }
 }

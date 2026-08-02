@@ -1,4 +1,5 @@
 #include "scene.h"
+#include "renderer/material.h"
 
 #define TINYOBJLOADER_DISABLE_FAST_FLOAT
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -87,7 +88,9 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
 
   switch (material.illum) {
   case 5: {
-
+    std::unique_ptr<Bxdf> bxdf = std::make_unique<Mirror>(kd);
+    prim->bxdf = bxdf.get();
+    bxdfs.emplace_back(std::move(bxdf));
   } break;
   case 7: {
     const double ior = material.ior;

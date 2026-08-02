@@ -44,7 +44,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
 
     Vec3 next_dir = prim->bxdf->sample(now_ray.dir, orienting_normal, rnd);
     now_ray = Ray(record.hitpoint, next_dir, record.id);
-    throughput = throughput * prim->bxdf->eval() *
+    throughput = throughput * prim->bxdf->eval(next_dir, orienting_normal) *
                  fmax(dot(next_dir, orienting_normal), 0.);
     pdf *= prim->bxdf->sampling_pdf(next_dir, orienting_normal);
   }
