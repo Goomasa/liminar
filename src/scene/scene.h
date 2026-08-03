@@ -4,13 +4,17 @@
 #include "renderer/ray.h"
 #include "scene/bvh.h"
 #include "scene/primitive.h"
+#include "util/random.h"
+#include "util/utils.h"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
 struct Scene {
   std::vector<std::unique_ptr<Bxdf>> bxdfs;
   std::vector<Primitive> primitives;
+  std::vector<uint32_t> lights;
   Color background;
   BVH bvh;
 
@@ -45,5 +49,14 @@ struct Scene {
     }
 
     return record->id != -1;
+  }
+
+  uint32_t sample_light_uniform(Random *rnd) const {
+    uint32_t sampled = rnd->gen_uint() % lights.size();
+    return lights[sampled];
+  }
+
+  double pdf_sample_light_uniform() const {
+    return lights.size() == 0 ? INF : 1. / (double)lights.size();
   }
 };

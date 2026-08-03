@@ -23,12 +23,15 @@ public:
   BVH() {}
 
   BVH(const std::vector<Primitive> &prims) {
-    basic_builder(prims);
-    // sah_builder(prims);
+    sah_builder(prims);
+
     tree.shrink_to_fit();
     std::cout << "constructed" << std::endl;
   }
 
   void basic_builder(const std::vector<Primitive> &prims);
+
   void sah_builder(const std::vector<Primitive> &prims);
+
+  double get_area(const uint32_t id = 0) const;
 };

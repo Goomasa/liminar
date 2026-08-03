@@ -122,7 +122,7 @@ void Renderer::render() const {
 
           for (uint32_t s = 0; s < samples_per_spx; s++) {
             integrator.reset();
-            integrator.integrate(scene.get(), ray, &rnd);
+            integrator.mis_integrate(scene.get(), ray, &rnd);
             accumlated =
                 accumlated + integrator.get_value() *
                                  camera->get_coefficient(ray, pixel_pos);

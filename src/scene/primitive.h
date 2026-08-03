@@ -52,6 +52,33 @@ public:
   }
 
   Point3 get_centroid() const { return (p + q + r) / 3.; }
+
+  double get_area() const {
+    Vec3 pq = q - p;
+    Vec3 pr = r - p;
+    return 0.5 * cross(pq, pr).len();
+  }
+
+  double pdf_sample_surface_area() {
+    Vec3 pq = q - p;
+    Vec3 pr = r - p;
+    return 1. / (cross(pq, pr).len() * 0.5);
+  }
+
+  Point3 sample_surface(Random *rnd, double *pdf) {
+    Vec3 pq = q - p;
+    Vec3 pr = r - p;
+
+    double r1 = rnd->gen();
+    double r2 = rnd->gen();
+    if (r1 + r2 > 1.) {
+      r1 = 1. - r1;
+      r2 = 1. - r2;
+    }
+
+    *pdf = 1. / (cross(pq, pr).len() * 0.5);
+    return p + pq * r1 + pr * r2;
+  }
 };
 
 class Primitive {

@@ -3,6 +3,7 @@
 #include "renderer/ray.h"
 #include "scene/scene.h"
 #include "util/image.h"
+#include "util/random.h"
 #include "util/utils.h"
 
 constexpr uint32_t DEPTH = 5;
@@ -23,6 +24,8 @@ public:
   void reset() { value = Color(); }
 
   void integrate(Scene *scene, Ray ray, Random *rnd);
+
+  void mis_integrate(Scene *scene, Ray ray, Random *rnd);
 
 private:
   Color value;

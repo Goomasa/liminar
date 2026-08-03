@@ -1,5 +1,6 @@
 #include "scene.h"
 #include "renderer/material.h"
+#include "util/utils.h"
 
 #define TINYOBJLOADER_DISABLE_FAST_FLOAT
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -25,6 +26,8 @@ void Scene::load_obj(const std::string &filename, const double scale,
   const auto &shapes = reader.GetShapes();
   const auto &materials = reader.GetMaterials();
 
+  uint32_t start = primitives.size();
+
   for (const tinyobj::shape_t &shape : shapes) {
     uint32_t offset = 0;
 
@@ -47,7 +50,7 @@ void Scene::load_obj(const std::string &filename, const double scale,
         normals[v] = Vec3(nx, ny, nz);
       }
 
-      Vec3 normal = (normals[0] + normals[1] + normals[2]) / 3;
+      Vec3 normal = normalize(normals[0] + normals[1] + normals[2]);
       if (normal.x < 0) {
         normal = normalize(
             cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
@@ -64,6 +67,10 @@ void Scene::load_obj(const std::string &filename, const double scale,
         bxdfs.emplace_back(std::move(bxdf));
       } else {
         load_mtl(materials[material_id], &prim);
+      }
+
+      if (prim.is_light()) {
+        lights.emplace_back(prim.id);
       }
 
       primitives.emplace_back(std::move(prim));

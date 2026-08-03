@@ -87,7 +87,8 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
       for (uint32_t i = prims_in_box->size() - 1; i >= 1; i--) {
         right_bbox = right_bbox + prims_in_box->at(i).shape.get_bbox();
         double total_area = area_left[i - 1] + right_bbox.get_area();
-        if (total_area < min_area) {
+        if (abs((int)(i - prims_in_box->size() / 2)) <= 1 &&
+            total_area < min_area) {
           min_area = total_area;
           partition = i;
           best_axis = axis;
@@ -109,5 +110,14 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
     tree.emplace_back(scene_bbox(right_prims), -1, 0);
     tmp_prims_tree.emplace_back(std::move(left_prims));
     tmp_prims_tree.emplace_back(std::move(right_prims));
+  }
+}
+
+double BVH::get_area(const uint32_t id) const {
+  if (tree[id].left == -1) {
+    return tree[id].bbox.get_area();
+  } else {
+    return tree[id].bbox.get_area() + get_area(tree[id].left) +
+           get_area(tree[id].left + 1);
   }
 }

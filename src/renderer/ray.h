@@ -18,10 +18,11 @@ struct HitRecord {
   Vec3 normal;
   uint32_t id;
 
-  HitRecord() : distance(INF), hitpoint(Point3()), normal(Vec3()), id(-1) {}
+  HitRecord(const double d = INF)
+      : distance(d), hitpoint(Point3()), normal(Vec3()), id(-1) {}
 
-  void reset() {
-    distance = INF;
+  void reset(const double d = INF) {
+    distance = d;
     id = -1;
   }
 };

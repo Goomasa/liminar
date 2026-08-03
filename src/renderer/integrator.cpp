@@ -1,6 +1,8 @@
 #include "integrator.h"
+#include "renderer/ray.h"
 #include "scene/primitive.h"
 #include "util/utils.h"
+#include <cstdint>
 
 inline double roullete(const uint32_t depth, const Color &throughput) {
   if (depth < DEPTH) {
@@ -22,7 +24,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
   for (uint32_t depth = 0;; depth++) {
     record.reset();
     if (!scene->intersect(now_ray, &record)) {
-      value = scene->background * (throughput / pdf);
+      value = value + scene->background * (throughput / pdf);
       return;
     }
 
@@ -41,6 +43,107 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     orienting_normal = dot(record.normal, now_ray.dir) < 0.
                            ? record.normal
                            : -1. * record.normal;
+
+    Vec3 next_dir = prim->bxdf->sample(now_ray.dir, orienting_normal, rnd);
+    now_ray = Ray(record.hitpoint, next_dir, record.id);
+    throughput = throughput * prim->bxdf->eval(next_dir, orienting_normal) *
+                 fmax(dot(next_dir, orienting_normal), 0.);
+    pdf *= prim->bxdf->sampling_pdf(next_dir, orienting_normal);
+  }
+}
+
+void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
+  Ray now_ray = ray, test_ray = Ray(Point3(), Vec3());
+  HitRecord record = HitRecord(), test_record = HitRecord();
+  Color throughput = Color(1.);
+  double pdf = 1.;
+  Vec3 orienting_normal;
+
+  for (uint32_t depth = 0;; depth++) {
+    record.reset();
+    if (!scene->intersect(now_ray, &record)) {
+      value = value + scene->background * (throughput / pdf);
+      break;
+    }
+
+    Primitive *prim = &scene->primitives[record.id];
+    if (prim->is_light() && dot(now_ray.dir, prim->shape.normal) < 0.) {
+      // value = value + throughput * prim->emission / pdf;
+      if (depth == 0) {
+        value = prim->emission;
+      }
+
+      break;
+    }
+
+    double roullete_prob = roullete(depth, throughput);
+    if (rnd->gen() > roullete_prob) {
+      break;
+    }
+    pdf *= roullete_prob;
+
+    orienting_normal = dot(record.normal, now_ray.dir) < 0.
+                           ? record.normal
+                           : -1. * record.normal;
+
+    if (!prim->bxdf->is_specular()) {
+      uint32_t light_id = scene->sample_light_uniform(rnd);
+      Primitive *light = &scene->primitives[light_id];
+      double pdf_sample_light, pdf_sample_surface_area, pdf_bxdf;
+      Point3 pos_on_light =
+          light->shape.sample_surface(rnd, &pdf_sample_surface_area);
+      Vec3 to_light = pos_on_light - record.hitpoint;
+      Vec3 to_light_norm = normalize(to_light);
+
+      test_record.reset(to_light.len() + 0.1);
+      test_ray = Ray(record.hitpoint, to_light_norm, record.id);
+
+      if (scene->intersect(test_ray, &test_record) &&
+          test_record.id == light_id &&
+          dot(to_light_norm, light->shape.normal) <= 0.) {
+        pdf_sample_light = scene->pdf_sample_light_uniform() *
+                           pdf_sample_surface_area * to_light.len2() /
+                           dot(to_light_norm, -1. * light->shape.normal);
+        pdf_bxdf = prim->bxdf->sampling_pdf(to_light_norm, orienting_normal);
+        double mis_weight = pdf_sample_light / (pdf_sample_light + pdf_bxdf);
+
+        Color tmp_throughput =
+            throughput * prim->bxdf->eval(to_light_norm, orienting_normal) *
+            fmax(dot(to_light_norm, orienting_normal), 0.);
+        value = value + light->emission * (tmp_throughput * mis_weight /
+                                           (pdf * pdf_sample_light));
+      }
+    }
+
+    {
+      test_record.reset();
+      Vec3 next_dir = prim->bxdf->sample(now_ray.dir, orienting_normal, rnd);
+      test_ray = Ray(record.hitpoint, next_dir, record.id);
+
+      if (scene->intersect(test_ray, &test_record)) {
+        Primitive *light = &scene->primitives[test_record.id];
+        if (light->is_light() && dot(next_dir, light->shape.normal) <= 0.) {
+          double pdf_bxdf =
+              prim->bxdf->sampling_pdf(next_dir, orienting_normal);
+
+          Vec3 to_light = test_record.hitpoint - record.hitpoint;
+          double pdf_sample_light = scene->pdf_sample_light_uniform() *
+                                    light->shape.pdf_sample_surface_area() *
+                                    to_light.len2() /
+                                    dot(next_dir, -1. * light->shape.normal);
+          double mis_weight = prim->bxdf->is_specular()
+                                  ? 1.
+                                  : pdf_bxdf / (pdf_sample_light + pdf_bxdf);
+
+          Color tmp_throughput = throughput *
+                                 prim->bxdf->eval(next_dir, orienting_normal) *
+                                 fmax(dot(next_dir, orienting_normal), 0.);
+
+          value = value + light->emission *
+                              (tmp_throughput * mis_weight / (pdf * pdf_bxdf));
+        }
+      }
+    }
 
     Vec3 next_dir = prim->bxdf->sample(now_ray.dir, orienting_normal, rnd);
     now_ray = Ray(record.hitpoint, next_dir, record.id);
