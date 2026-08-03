@@ -9,7 +9,7 @@
   },
 
   "camera":{
-    "model":"pinhole",
+    "model":"lens",
     "pinhole":{
       "resolution-w":400,
       "resolution-h":400,
@@ -35,7 +35,7 @@
 
   "renderer":{
     "supersamples":4,
-    "samples-per-superpixel":4,
+    "samples-per-superpixel":2,
     "is-test":false
   }
 }

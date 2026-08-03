@@ -24,7 +24,7 @@ void Renderer::set_renderer(ObjectNode &node) {
 void Renderer::set_camera(ObjectNode &node) {
   ObjectNode camera_node = node.search_key<ObjectNode>("camera");
   if (camera_node.search_key_safe<std::string>("model", "pinhole") == "lens") {
-    ObjectNode lens_node = camera_node.search_key<ObjectNode>("pinhole");
+    ObjectNode lens_node = camera_node.search_key<ObjectNode>("lens");
     uint32_t reso_w =
         (uint32_t)lens_node.search_key_safe<double>("resolution-w", 400);
     uint32_t reso_h =
@@ -43,7 +43,7 @@ void Renderer::set_camera(ObjectNode &node) {
     double focal_distance =
         lens_node.search_key_safe<double>("focal-distance", 90);
 
-    double w_scale = lens_node.search_key_safe<double>("w_scale", 100);
+    double w_scale = lens_node.search_key_safe<double>("w-scale", 100);
 
     camera = std::make_unique<LensModel>(reso_w, reso_h, sensor_center,
                                          sensor_w, sensor_dir, sensor_to_lens,
