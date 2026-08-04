@@ -34,7 +34,7 @@
   },
 
   "renderer":{
-    "supersamples":4,
+    "supersamples":8,
     "samples-per-superpixel":4,
     "threads-num":8,
     "is-test":false

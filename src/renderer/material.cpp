@@ -51,7 +51,6 @@ Vec3 Glass::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
   }
 
   double reflectance = schlick_fresnel(wo, normal, ior_i, ior_o);
-  // std::cout << reflectance << std::endl;
   if (rnd->gen() < reflectance) {
     return reflection_dir(wo, normal);
   } else {

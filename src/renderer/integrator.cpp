@@ -2,6 +2,7 @@
 #include "renderer/ray.h"
 #include "scene/primitive.h"
 #include "util/utils.h"
+#include <cmath>
 #include <cstdint>
 
 inline double roullete(const uint32_t depth, const Color &throughput) {
@@ -49,7 +50,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd);
     now_ray = Ray(record.hitpoint, wi, record.id);
     throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
-                 fmax(dot(wi, orienting_normal), 0.);
+                 fabs(dot(wi, orienting_normal));
     pdf *= prim->bxdf->sampling_pdf(wi, orienting_normal);
   }
 }
@@ -114,7 +115,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
         Color tmp_throughput =
             throughput *
             prim->bxdf->eval(wo, to_light_norm, orienting_normal, into) *
-            fmax(dot(to_light_norm, orienting_normal), 0.);
+            fabs(dot(to_light_norm, orienting_normal));
         value = value + light->emission * (tmp_throughput * mis_weight /
                                            (pdf * pdf_sample_light));
       }
@@ -141,7 +142,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 
           Color tmp_throughput =
               throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
-              fmax(dot(wi, orienting_normal), 0.);
+              fabs(dot(wi, orienting_normal));
 
           value = value + light->emission *
                               (tmp_throughput * mis_weight / (pdf * pdf_bxdf));
@@ -152,7 +153,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd);
     now_ray = Ray(record.hitpoint, wi, record.id);
     throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
-                 fmax(dot(wi, orienting_normal), 0.);
+                 fabs(dot(wi, orienting_normal));
     pdf *= prim->bxdf->sampling_pdf(wi, orienting_normal);
   }
 }
