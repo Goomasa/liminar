@@ -5,7 +5,6 @@
 #include "util/utils.h"
 #include <cmath>
 #include <cstdint>
-#include <tuple>
 
 class Camera {
 public:

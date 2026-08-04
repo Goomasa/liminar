@@ -1,6 +1,7 @@
 #include "scene.h"
 #include "renderer/material.h"
 #include "util/utils.h"
+#include <memory>
 
 #define TINYOBJLOADER_DISABLE_FAST_FLOAT
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -33,7 +34,7 @@ void Scene::load_obj(const std::string &filename, const double scale,
 
     for (uint32_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
       Point3 vertices[3];
-      Vec3 normals[3] = {Vec3(-INF), Vec3(-INF), Vec3(-INF)};
+      Vec3 normals[3] = {Vec3(0), Vec3(0), Vec3(0)};
 
       for (uint8_t v = 0; v < 3; v++) {
         const auto idx = shape.mesh.indices[offset + v];
@@ -51,7 +52,7 @@ void Scene::load_obj(const std::string &filename, const double scale,
       }
 
       Vec3 normal = normalize(normals[0] + normals[1] + normals[2]);
-      if (normal.x < 0) {
+      if (normal.len2() < EPS) {
         normal = normalize(
             cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
       }
@@ -93,22 +94,23 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
     return;
   }
 
+  std::unique_ptr<Bxdf> bxdf;
+
   switch (material.illum) {
   case 5: {
-    std::unique_ptr<Bxdf> bxdf = std::make_unique<Mirror>(kd);
-    prim->bxdf = bxdf.get();
-    bxdfs.emplace_back(std::move(bxdf));
+    bxdf = std::make_unique<Mirror>(kd);
   } break;
   case 7: {
     const double ior = material.ior;
-
+    bxdf = std::make_unique<Glass>(kd, ior);
   } break;
   default: {
-    std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(kd);
-    prim->bxdf = bxdf.get();
-    bxdfs.emplace_back(std::move(bxdf));
+    bxdf = std::make_unique<Lambertian>(kd);
   } break;
   }
+
+  prim->bxdf = bxdf.get();
+  bxdfs.emplace_back(std::move(bxdf));
 
   return;
 }
