@@ -2,7 +2,7 @@
 #include "util/utils.h"
 #include <cmath>
 
-Vec3 Lambertian::sample(const Vec3 &in, const Vec3 &normal, Random *rnd) const {
+Vec3 Lambertian::sample(const Vec3 &wo, const Vec3 &normal, Random *rnd) const {
   Vec3 w = normal, u, v;
   if (fabs(w.x) > EPS) {
     u = normalize(cross(Vec3(0, 1, 0), w));
@@ -19,6 +19,6 @@ Vec3 Lambertian::sample(const Vec3 &in, const Vec3 &normal, Random *rnd) const {
                    w * sqrt(1 - sin_theta2));
 }
 
-double Lambertian::sampling_pdf(const Vec3 &out, const Vec3 &normal) const {
-  return fmax(dot(out, normal), EPS) * PI_INV;
+double Lambertian::sampling_pdf(const Vec3 &wi, const Vec3 &normal) const {
+  return fmax(dot(wi, normal), EPS) * PI_INV;
 }

@@ -10,7 +10,8 @@
 class Camera {
 public:
   virtual ~Camera() = default;
-  virtual std::tuple<uint32_t, uint32_t> get_resolution() const = 0;
+  virtual uint32_t get_resolution_w() const = 0;
+  virtual uint32_t get_resolution_h() const = 0;
   virtual double get_coefficient(const Ray &ray,
                                  const Point3 &pixel_pos) const = 0;
   virtual Ray get_first_ray(Random *rnd, const Point3 &pixel_pos) const = 0;
@@ -41,9 +42,9 @@ public:
     sensitivity = w_scale / (pixel_width * pixel_height);
   }
 
-  std::tuple<uint32_t, uint32_t> get_resolution() const override {
-    return std::tuple<uint32_t, uint32_t>(resolution_w, resolution_h);
-  }
+  uint32_t get_resolution_w() const override { return resolution_w; }
+
+  uint32_t get_resolution_h() const override { return resolution_h; }
 
   double get_coefficient(const Ray &ray,
                          const Point3 &pixel_pos) const override {
@@ -108,9 +109,9 @@ public:
     sensitivity = w_scale / (pixel_width * pixel_height);
   }
 
-  std::tuple<uint32_t, uint32_t> get_resolution() const override {
-    return std::tuple<uint32_t, uint32_t>(resolution_w, resolution_h);
-  }
+  uint32_t get_resolution_w() const override { return resolution_w; }
+
+  uint32_t get_resolution_h() const override { return resolution_h; }
 
   double get_coefficient(const Ray &ray,
                          const Point3 &pixel_pos) const override {

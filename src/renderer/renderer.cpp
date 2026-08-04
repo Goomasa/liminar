@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <omp.h>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,8 @@ void Renderer::set_renderer(ObjectNode &node) {
       (uint32_t)renderer_node.search_key_safe<double>("supersamples", 2);
   samples_per_spx = (uint32_t)renderer_node.search_key_safe<double>(
       "samples-per-superpixel", 2);
+  threads_num =
+      (uint32_t)renderer_node.search_key_safe<double>("threads-num", 1);
   is_test = renderer_node.search_key_safe<bool>("is-test", false);
 }
 
@@ -90,7 +93,7 @@ void Renderer::set_scene(ObjectNode &node) {
   try {
     for (const auto &entry : std::filesystem::recursive_directory_iterator(p)) {
       if (entry.is_regular_file() && entry.path().extension() == ".obj") {
-        scene->load_obj(entry.path(), scale, tr);
+        scene->load_obj(entry.path().string<char>(), scale, tr);
       }
     }
   } catch (const std::filesystem::filesystem_error err) {
@@ -100,18 +103,22 @@ void Renderer::set_scene(ObjectNode &node) {
 }
 
 void Renderer::render() const {
-  auto [resolution_u, resolution_v] = camera->get_resolution();
-  std::vector<Color> image(resolution_u * resolution_v);
-  uint32_t pixel_num = resolution_u * resolution_v;
+  uint32_t resolution_w = camera->get_resolution_w();
+  uint32_t resolution_h = camera->get_resolution_h();
+  std::vector<Color> image(resolution_w * resolution_h);
+  uint32_t pixel_num = resolution_w * resolution_h;
   double total_inv =
       1. / (double)(supersamples * supersamples * samples_per_spx);
 
   HitRecord record = HitRecord();
 
-  for (uint32_t v = 0; v < resolution_v; v++) {
-    for (uint32_t u = 0; u < resolution_u; u++) {
+  omp_set_num_threads(8);
+
+#pragma omp parallel for
+  for (uint32_t v = 0; v < resolution_h; v++) {
+    for (uint32_t u = 0; u < resolution_w; u++) {
       Color accumlated = Color();
-      uint32_t idx = pixel_num - resolution_u * v - u - 1;
+      uint32_t idx = pixel_num - resolution_w * v - u - 1;
       Random rnd = Random(u * v);
 
       for (uint32_t sv = 0; sv < supersamples; sv++) {
@@ -134,20 +141,21 @@ void Renderer::render() const {
     std::cout << v << std::endl;
   }
 
-  save_ppm("render.ppm", image, resolution_u, resolution_v);
+  save_ppm("render.ppm", image, resolution_w, resolution_h);
 }
 
 void Renderer::test_render() const {
-  auto [resolution_u, resolution_v] = camera->get_resolution();
-  std::vector<Color> image(resolution_u * resolution_v);
-  uint32_t pixel_num = resolution_u * resolution_v;
+  uint32_t resolution_w = camera->get_resolution_w();
+  uint32_t resolution_h = camera->get_resolution_h();
+  std::vector<Color> image(resolution_w * resolution_h);
+  uint32_t pixel_num = resolution_w * resolution_h;
 
   HitRecord record = HitRecord();
 
-  for (uint32_t v = 0; v < resolution_v; v++) {
-    for (uint32_t u = 0; u < resolution_u; u++) {
+  for (uint32_t v = 0; v < resolution_h; v++) {
+    for (uint32_t u = 0; u < resolution_w; u++) {
       Color accumlated = Color();
-      uint32_t idx = pixel_num - resolution_u * v - u - 1;
+      uint32_t idx = pixel_num - resolution_w * v - u - 1;
 
       for (uint32_t sv = 0; sv < 2; sv++) {
         for (uint32_t su = 0; su < 2; su++) {
@@ -168,5 +176,5 @@ void Renderer::test_render() const {
     std::cout << v << std::endl;
   }
 
-  save_ppm("test.ppm", image, resolution_u, resolution_v);
+  save_ppm("test.ppm", image, resolution_w, resolution_h);
 };

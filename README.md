@@ -2,6 +2,7 @@
 
 ## Dependencies
 - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader.git)
+- OpenMP
 
 ## Usage
 MacOS

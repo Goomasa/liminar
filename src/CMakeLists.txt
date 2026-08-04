@@ -9,9 +9,13 @@ set(exe_file
     config/parser.cpp
 )
 
+find_package(OpenMP REQUIRED)
+
 add_executable(liminar ${exe_file})
 
 target_include_directories(liminar PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/externals
 )
+
+target_link_libraries(liminar PRIVATE OpenMP::OpenMP_CXX)

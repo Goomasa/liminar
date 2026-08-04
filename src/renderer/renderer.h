@@ -11,11 +11,11 @@ class Renderer {
 public:
   std::unique_ptr<Scene> scene;
   std::unique_ptr<Camera> camera;
-  uint32_t supersamples, samples_per_spx;
+  uint32_t supersamples, samples_per_spx, threads_num;
   bool is_test = false;
 
   Renderer() {
-    ObjectNode node = load_config();
+    ObjectNode node = load_json();
     set_camera(node);
     set_scene(node);
     set_renderer(node);

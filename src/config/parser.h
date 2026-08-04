@@ -53,10 +53,11 @@ inline T get_data_safe(const Data &data, const T &default_) {
   }
 }
 
-inline ObjectNode load_config() {
-  std::ifstream ifs("render-config.json", std::ios::in);
+inline ObjectNode
+load_json(const std::string &filename = "render-config.json") {
+  std::ifstream ifs(filename, std::ios::in);
   if (!ifs) {
-    exit_with_error<void>("failed to open config");
+    exit_with_error<void>("failed to open ", filename);
   }
 
   std::string tmp, code;
