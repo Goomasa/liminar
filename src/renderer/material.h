@@ -11,7 +11,8 @@ public:
                      const bool into) const = 0;
   virtual Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
                       Random *rnd) const = 0;
-  virtual double sampling_pdf(const Vec3 &wi, const Vec3 &normal) const = 0;
+  virtual double sampling_pdf(const Vec3 &wo, const Vec3 &wi,
+                              const Vec3 &normal, const bool into) const = 0;
 
   static Vec3 reflection_dir(const Vec3 &wo, const Vec3 &normal) {
     return normalize(normal * 2. * dot(normal, wo) - wo);
@@ -25,11 +26,13 @@ public:
                      normal * std::sqrt(1. - r * r * (1. - d * d)));
   }
 
-  static double schlick_fresnel(const Vec3 &wo, const Vec3 &normal,
-                                const double ior1, const double ior2) {
-    double a = ior1 - ior2, b = ior1 + ior2;
+  static double schlick_fresnel(const Vec3 &wo, const Vec3 &wi,
+                                const Vec3 &normal, const double ior_o,
+                                const double ior_i) {
+    double a = ior_o - ior_i, b = ior_o + ior_i;
     double f0 = (a * a) / (b * b);
-    return f0 + (1. - f0) * pow(1. - dot(wo, normal), 5);
+    double d = ior_o > ior_i ? fabs(dot(wi, normal)) : fabs(dot(wo, normal));
+    return f0 + (1. - f0) * pow(1. - d, 5);
   }
 
   virtual bool is_specular() const = 0;
@@ -49,7 +52,8 @@ public:
   Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
               Random *rnd) const override;
 
-  double sampling_pdf(const Vec3 &wi, const Vec3 &normal) const override;
+  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                      const bool into) const override;
 
   bool is_specular() const override { return false; }
 };
@@ -70,7 +74,8 @@ public:
     return reflection_dir(wo, normal);
   }
 
-  double sampling_pdf(const Vec3 &wi, const Vec3 &normal) const override {
+  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                      const bool into) const override {
     return 1.; // Dirac-deita
   }
 
@@ -90,9 +95,8 @@ public:
   Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
               Random *rnd) const override;
 
-  double sampling_pdf(const Vec3 &wi, const Vec3 &normal) const override {
-    return 1.; // Dirac-deita
-  }
+  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                      const bool into) const override;
 
   bool is_specular() const override { return true; }
 };

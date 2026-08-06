@@ -51,7 +51,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     now_ray = Ray(record.hitpoint, wi, record.id);
     throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
                  fabs(dot(wi, orienting_normal));
-    pdf *= prim->bxdf->sampling_pdf(wi, orienting_normal);
+    pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
   }
 }
 
@@ -100,22 +100,25 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       Vec3 to_light = pos_on_light - record.hitpoint;
       Vec3 to_light_norm = normalize(to_light);
 
+      pdf_bxdf =
+          prim->bxdf->sampling_pdf(wo, to_light_norm, orienting_normal, into);
+
       test_record.reset(to_light.len() + 0.1);
       test_ray = Ray(record.hitpoint, to_light_norm, record.id);
 
-      if (scene->intersect(test_ray, &test_record) &&
+      if (pdf_bxdf > 0. && scene->intersect(test_ray, &test_record) &&
           test_record.id == light_id &&
           dot(to_light_norm, light->shape.normal) <= 0.) {
         pdf_sample_light = scene->pdf_sample_light_uniform() *
                            pdf_sample_surface_area * to_light.len2() /
                            dot(to_light_norm, -1. * light->shape.normal);
-        pdf_bxdf = prim->bxdf->sampling_pdf(to_light_norm, orienting_normal);
+
         double mis_weight = pdf_sample_light / (pdf_sample_light + pdf_bxdf);
 
         Color tmp_throughput =
             throughput *
             prim->bxdf->eval(wo, to_light_norm, orienting_normal, into) *
-            fabs(dot(to_light_norm, orienting_normal));
+            fmax(dot(to_light_norm, orienting_normal), 0.);
         value = value + light->emission * (tmp_throughput * mis_weight /
                                            (pdf * pdf_sample_light));
       }
@@ -129,7 +132,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       if (scene->intersect(test_ray, &test_record)) {
         Primitive *light = &scene->primitives[test_record.id];
         if (light->is_light() && dot(wi, light->shape.normal) <= 0.) {
-          double pdf_bxdf = prim->bxdf->sampling_pdf(wi, orienting_normal);
+          double pdf_bxdf =
+              prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
 
           Vec3 to_light = test_record.hitpoint - record.hitpoint;
           double pdf_sample_light = scene->pdf_sample_light_uniform() *
@@ -154,6 +158,6 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     now_ray = Ray(record.hitpoint, wi, record.id);
     throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
                  fabs(dot(wi, orienting_normal));
-    pdf *= prim->bxdf->sampling_pdf(wi, orienting_normal);
+    pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
   }
 }

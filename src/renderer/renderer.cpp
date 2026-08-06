@@ -115,7 +115,7 @@ void Renderer::render() const {
   omp_set_num_threads(8);
 
 #pragma omp parallel for
-  for (uint32_t v = 0; v < resolution_h; v++) {
+  for (int32_t v = 0; v < resolution_h; v++) {
     for (uint32_t u = 0; u < resolution_w; u++) {
       Color accumlated = Color();
       uint32_t idx = pixel_num - resolution_w * v - u - 1;
