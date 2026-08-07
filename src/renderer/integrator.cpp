@@ -70,7 +70,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     }
 
     Primitive *prim = &scene->primitives[record.id];
-    if (prim->is_light() && dot(now_ray.dir, prim->shape.normal) < 0.) {
+    if (prim->is_light() &&
+        dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
       // value = value + throughput * prim->emission / pdf;
       if (depth == 0) {
         value = prim->emission;
@@ -96,7 +97,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       Primitive *light = &scene->primitives[light_id];
       double pdf_sample_light, pdf_sample_surface_area, pdf_bxdf;
       Point3 pos_on_light =
-          light->shape.sample_surface(rnd, &pdf_sample_surface_area);
+          light->shape->sample_surface(rnd, &pdf_sample_surface_area);
       Vec3 to_light = pos_on_light - record.hitpoint;
       Vec3 to_light_norm = normalize(to_light);
 
@@ -108,10 +109,11 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 
       if (pdf_bxdf > 0. && scene->intersect(test_ray, &test_record) &&
           test_record.id == light_id &&
-          dot(to_light_norm, light->shape.normal) <= 0.) {
-        pdf_sample_light = scene->pdf_sample_light_uniform() *
-                           pdf_sample_surface_area * to_light.len2() /
-                           dot(to_light_norm, -1. * light->shape.normal);
+          dot(to_light_norm, light->shape->get_normal(pos_on_light)) <= 0.) {
+        pdf_sample_light =
+            scene->pdf_sample_light_uniform() * pdf_sample_surface_area *
+            to_light.len2() /
+            dot(to_light_norm, -1. * light->shape->get_normal(pos_on_light));
 
         double mis_weight = pdf_sample_light / (pdf_sample_light + pdf_bxdf);
 
@@ -131,15 +133,16 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 
       if (scene->intersect(test_ray, &test_record)) {
         Primitive *light = &scene->primitives[test_record.id];
-        if (light->is_light() && dot(wi, light->shape.normal) <= 0.) {
+        if (light->is_light() &&
+            dot(wi, light->shape->get_normal(test_record.hitpoint)) <= 0.) {
           double pdf_bxdf =
               prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
 
           Vec3 to_light = test_record.hitpoint - record.hitpoint;
-          double pdf_sample_light = scene->pdf_sample_light_uniform() *
-                                    light->shape.pdf_sample_surface_area() *
-                                    to_light.len2() /
-                                    dot(wi, -1. * light->shape.normal);
+          double pdf_sample_light =
+              scene->pdf_sample_light_uniform() *
+              light->shape->pdf_sample_surface_area() * to_light.len2() /
+              dot(wi, -1. * light->shape->get_normal(test_record.hitpoint));
           double mis_weight = prim->bxdf->is_specular()
                                   ? 1.
                                   : pdf_bxdf / (pdf_sample_light + pdf_bxdf);

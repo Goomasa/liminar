@@ -1,5 +1,6 @@
 #include "scene.h"
 #include "renderer/material.h"
+#include "scene/primitive.h"
 #include "util/utils.h"
 #include <memory>
 
@@ -23,29 +24,29 @@ void Scene::load_obj(const std::string &filename, const double scale,
     std::cout << reader.Warning() << std::endl;
   }
 
-  const auto &attrib = reader.GetAttrib();
-  const auto &shapes = reader.GetShapes();
-  const auto &materials = reader.GetMaterials();
+  const auto &obj_attrib = reader.GetAttrib();
+  const auto &obj_shapes = reader.GetShapes();
+  const auto &obj_materials = reader.GetMaterials();
 
   uint32_t start = primitives.size();
 
-  for (const tinyobj::shape_t &shape : shapes) {
+  for (const tinyobj::shape_t &obj_shape : obj_shapes) {
     uint32_t offset = 0;
 
-    for (uint32_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
+    for (uint32_t f = 0; f < obj_shape.mesh.num_face_vertices.size(); f++) {
       Point3 vertices[3];
       Vec3 normals[3] = {Vec3(0), Vec3(0), Vec3(0)};
 
       for (uint8_t v = 0; v < 3; v++) {
-        const auto idx = shape.mesh.indices[offset + v];
+        const auto idx = obj_shape.mesh.indices[offset + v];
 
-        const float vx = attrib.vertices[3 * idx.vertex_index + 0];
-        const float vy = attrib.vertices[3 * idx.vertex_index + 1];
-        const float vz = attrib.vertices[3 * idx.vertex_index + 2];
+        const float vx = obj_attrib.vertices[3 * idx.vertex_index + 0];
+        const float vy = obj_attrib.vertices[3 * idx.vertex_index + 1];
+        const float vz = obj_attrib.vertices[3 * idx.vertex_index + 2];
 
-        const double nx = (double)attrib.normals[3 * idx.normal_index + 0];
-        const double ny = (double)attrib.normals[3 * idx.normal_index + 1];
-        const double nz = (double)attrib.normals[3 * idx.normal_index + 2];
+        const double nx = (double)obj_attrib.normals[3 * idx.normal_index + 0];
+        const double ny = (double)obj_attrib.normals[3 * idx.normal_index + 1];
+        const double nz = (double)obj_attrib.normals[3 * idx.normal_index + 2];
 
         vertices[v] = Point3((double)vx, (double)vy, (double)vz) * scale + tr;
         normals[v] = Vec3(nx, ny, nz);
@@ -57,17 +58,19 @@ void Scene::load_obj(const std::string &filename, const double scale,
             cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
       }
 
-      Primitive prim =
-          Primitive(Triangle(vertices[0], vertices[1], vertices[2], normal),
-                    primitives.size());
+      std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
+          vertices[0], vertices[1], vertices[2], normal);
 
-      int32_t material_id = shape.mesh.material_ids[f];
+      Primitive prim = Primitive(shape.get(), primitives.size());
+      shapes.emplace_back(std::move(shape));
+
+      int32_t material_id = obj_shape.mesh.material_ids[f];
       if (material_id < 0) {
         std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
         prim.bxdf = bxdf.get();
         bxdfs.emplace_back(std::move(bxdf));
       } else {
-        load_mtl(materials[material_id], &prim);
+        load_mtl(obj_materials[material_id], &prim);
       }
 
       if (prim.is_light()) {
@@ -113,4 +116,14 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   bxdfs.emplace_back(std::move(bxdf));
 
   return;
+}
+
+void Scene::set_sphere() {
+  std::unique_ptr<Shape> sphere =
+      std::make_unique<Sphere>(Point3(12, 7, -15), 7);
+  std::unique_ptr<Bxdf> bxdf = std::make_unique<Glass>(Color(1.), 1.5);
+  Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
+  primitives.emplace_back(std::move(prim));
+  shapes.emplace_back(std::move(sphere));
+  bxdfs.emplace_back(std::move(bxdf));
 }

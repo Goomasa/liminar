@@ -6,7 +6,7 @@
 inline AABB scene_bbox(const std::vector<Primitive> &prims) {
   AABB bbox = AABB();
   for (const Primitive &prim : prims) {
-    bbox = bbox + prim.shape.get_bbox();
+    bbox = bbox + prim.shape->get_bbox();
   }
   return bbox;
 }
@@ -14,8 +14,7 @@ inline AABB scene_bbox(const std::vector<Primitive> &prims) {
 inline void sort_primitives(std::vector<Primitive> *prims, const uint8_t axis) {
   std::sort(prims->begin(), prims->end(),
             [axis](const Primitive &a, const Primitive &b) {
-              return a.shape.get_centroid()[axis] <
-                     b.shape.get_centroid()[axis];
+              return a.shape->get_center()[axis] < b.shape->get_center()[axis];
             });
   return;
 }
@@ -80,12 +79,12 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
       AABB left_bbox = AABB(), right_bbox = AABB();
       for (uint32_t i = 0; i < prims_in_box->size() - 1; i++) {
-        left_bbox = left_bbox + prims_in_box->at(i).shape.get_bbox();
+        left_bbox = left_bbox + prims_in_box->at(i).shape->get_bbox();
         area_left[i] = left_bbox.get_area();
       }
 
       for (uint32_t i = prims_in_box->size() - 1; i >= 1; i--) {
-        right_bbox = right_bbox + prims_in_box->at(i).shape.get_bbox();
+        right_bbox = right_bbox + prims_in_box->at(i).shape->get_bbox();
         double total_area = area_left[i - 1] + right_bbox.get_area();
         if (abs((int)(i - prims_in_box->size() / 2)) <= 1 &&
             total_area < min_area) {

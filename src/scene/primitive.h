@@ -7,7 +7,19 @@
 #include <cmath>
 #include <cstdint>
 
-class Triangle {
+class Shape {
+public:
+  virtual ~Shape() = default;
+  virtual AABB get_bbox() const = 0;
+  virtual bool hit(Ray &ray, HitRecord *record) const = 0;
+  virtual Point3 get_center() const = 0;
+  virtual double get_area() const = 0;
+  virtual double pdf_sample_surface_area() const = 0;
+  virtual Point3 sample_surface(Random *rnd, double *pdf) const = 0;
+  virtual Vec3 get_normal(const Point3 &p) const = 0;
+};
+
+class Triangle : public Shape {
 public:
   Point3 p, q, r;
   Vec3 normal; // wip: normals of each vertices
@@ -21,11 +33,11 @@ public:
            const Vec3 &normal)
       : p(p), q(q), r(r), normal(normal) {}
 
-  AABB get_bbox() const {
+  AABB get_bbox() const override {
     return AABB(vmin(p, vmin(q, r)), vmax(p, vmax(q, r))).fix();
   }
 
-  bool hit(Ray &ray, HitRecord *record) const {
+  bool hit(Ray &ray, HitRecord *record) const override {
     double dn = dot(ray.dir, normal);
     if (fabs(dn) < EPS) {
       return false;
@@ -51,21 +63,21 @@ public:
     return true;
   }
 
-  Point3 get_centroid() const { return (p + q + r) / 3.; }
+  Point3 get_center() const override { return (p + q + r) / 3.; }
 
-  double get_area() const {
+  double get_area() const override {
     Vec3 pq = q - p;
     Vec3 pr = r - p;
     return 0.5 * cross(pq, pr).len();
   }
 
-  double pdf_sample_surface_area() {
+  double pdf_sample_surface_area() const override {
     Vec3 pq = q - p;
     Vec3 pr = r - p;
     return 1. / (cross(pq, pr).len() * 0.5);
   }
 
-  Point3 sample_surface(Random *rnd, double *pdf) {
+  Point3 sample_surface(Random *rnd, double *pdf) const override {
     Vec3 pq = q - p;
     Vec3 pr = r - p;
 
@@ -79,27 +91,86 @@ public:
     *pdf = 1. / (cross(pq, pr).len() * 0.5);
     return p + pq * r1 + pr * r2;
   }
+
+  Vec3 get_normal(const Point3 &p) const override { return normal; }
+};
+
+class Sphere : public Shape {
+public:
+  Point3 center;
+  double radius;
+
+  Sphere(const Point3 &center, const double r) : center(center), radius(r) {}
+
+  AABB get_bbox() const override {
+    return AABB(center - Vec3(radius), center + Vec3(radius));
+  }
+
+  bool hit(Ray &ray, HitRecord *record) const override {
+    Vec3 oc = center - ray.org;
+    double b = dot(oc, ray.dir);
+    double d = b * b - oc.len2() + radius * radius;
+
+    if (d < 0) {
+      return false;
+    }
+
+    double t1 = b - sqrt(d), t2 = b + sqrt(d), t;
+    if (t1 > 0.) {
+      t = t1;
+    } else if (t2 > 0.) {
+      t = t2;
+    } else {
+      return false;
+    }
+
+    if (t > record->distance) {
+      return false;
+    }
+
+    record->distance = t;
+    record->hitpoint = ray.org + ray.dir * t;
+    record->normal = normalize(ray.dir * t - oc);
+    return true;
+  }
+
+  Point3 get_center() const override { return center; }
+
+  double get_area() const override { return 4. * PI * radius * radius; }
+
+  double pdf_sample_surface_area() const override {
+    // do not use
+    return 1.;
+  }
+
+  Point3 sample_surface(Random *rnd, double *pdf) const override {
+    // do not use
+    return 1.;
+  }
+
+  Vec3 get_normal(const Point3 &p) const override {
+    return normalize(p - center);
+  }
 };
 
 class Primitive {
 public:
-  Triangle shape;
+  Shape *shape;
   Bxdf *bxdf;
   Color emission;
   uint32_t id;
 
-  Primitive(Triangle shape, const uint32_t id)
+  Primitive(Shape *shape, const uint32_t id)
       : shape(shape), emission(Color()), id(id) {}
 
-  Primitive(Triangle shape, Bxdf *bxdf, const uint32_t id)
+  Primitive(Shape *shape, Bxdf *bxdf, const uint32_t id)
       : shape(shape), bxdf(bxdf), emission(Color()), id(id) {}
 
-  Primitive(Triangle shape, Bxdf *bxdf, const Color &emission,
-            const uint32_t id)
+  Primitive(Shape *shape, Bxdf *bxdf, const Color &emission, const uint32_t id)
       : shape(shape), bxdf(bxdf), emission(emission), id(id) {}
 
   void hit(Ray &ray, HitRecord *record) const {
-    if (ray.prev_id != id && shape.hit(ray, record)) {
+    if (ray.prev_id != id && shape->hit(ray, record)) {
       record->id = id;
     }
   }

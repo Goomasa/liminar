@@ -13,12 +13,13 @@
 
 struct Scene {
   std::vector<std::unique_ptr<Bxdf>> bxdfs;
+  std::vector<std::unique_ptr<Shape>> shapes;
   std::vector<Primitive> primitives;
   std::vector<uint32_t> lights;
   Color background;
   BVH bvh;
 
-  Scene(const Color &background) : background(background) {}
+  Scene(const Color &background) : background(background) { set_sphere(); }
 
   void load_obj(const std::string &filename, const double scale = 1.,
                 const Vec3 &tr = Vec3());
@@ -59,4 +60,7 @@ struct Scene {
   double pdf_sample_light_uniform() const {
     return lights.size() == 0 ? INF : 1. / (double)lights.size();
   }
+
+private:
+  void set_sphere();
 };
