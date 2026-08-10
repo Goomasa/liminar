@@ -5,13 +5,13 @@
 #include <cmath>
 #include <cstdint>
 
-inline double roullete(const uint32_t depth, const Color &throughput) {
-  if (depth < DEPTH) {
+inline double roullete(const uint32_t depth, const bool is_specular) {
+  if (depth < DEPTH || is_specular) {
     return 1.0;
   } else if (depth > MAX_DEPTH) {
-    return normalize(throughput).max() * pow(0.5, depth - MAX_DEPTH);
+    return 0.;
   } else {
-    return normalize(throughput).max();
+    return 0.8;
   }
 }
 
@@ -35,7 +35,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
       return;
     }
 
-    double roullete_prob = roullete(depth, throughput);
+    double roullete_prob = roullete(depth, prim->bxdf->is_specular());
     if (rnd->gen() > roullete_prob) {
       return;
     }
@@ -80,7 +80,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       break;
     }
 
-    double roullete_prob = roullete(depth, throughput);
+    double roullete_prob = roullete(depth, prim->bxdf->is_specular());
     if (rnd->gen() > roullete_prob) {
       break;
     }

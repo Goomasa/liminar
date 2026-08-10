@@ -9,6 +9,47 @@ constexpr double PI_INV = 1.0 / PI;
 constexpr double INF = 1e128;
 constexpr double EPS = 1e-6;
 
+struct Vec2 {
+  double u, v;
+
+  Vec2() : u(0.), v(0.) {}
+
+  Vec2(const double d) : u(d), v(d) {}
+
+  Vec2(const double u, const double v) : u(u), v(v) {}
+
+  inline Vec2 operator+(const Vec2 &vec) const {
+    return Vec2(u + vec.u, v + vec.v);
+  }
+
+  inline Vec2 operator-(const Vec2 &vec) const {
+    return Vec2(u - vec.u, v - vec.v);
+  }
+
+  inline Vec2 operator*(const double d) const { return Vec2(u * d, v * d); }
+
+  inline Vec2 operator/(const double d) const { return Vec2(u / d, v / d); }
+
+  inline Vec2 operator*(const Vec2 &vec) const {
+    return Vec2(u * vec.u, v * vec.v);
+  }
+
+  inline Vec2 operator/(const Vec2 &vec) const {
+    return Vec2(u / vec.u, v / vec.v);
+  }
+
+  inline double operator[](const uint8_t i) const {
+    // i=0,1
+    return (&u)[i % 2];
+  }
+
+  inline void display() const { std::cout << u << ", " << v << std::endl; }
+
+  inline double max() const { return fmax(u, v); }
+
+  inline double min() const { return fmin(u, v); }
+};
+
 struct Vec3 {
   double x, y, z;
 
@@ -89,3 +130,8 @@ typedef Vec3 Color;
 typedef Vec3 Point3;
 
 inline double clamp01(const double d) { return fmin(1., fmax(d, 0.)); }
+
+inline double lerp1d(const double a, const double b, const double r) {
+  // a <--- r ---> ? <--- 1-r ---> b
+  return (1 - r) * a + r * b;
+}

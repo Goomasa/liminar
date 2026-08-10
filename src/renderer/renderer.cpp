@@ -112,9 +112,9 @@ void Renderer::render() const {
 
   HitRecord record = HitRecord();
 
-  omp_set_num_threads(8);
+  omp_set_num_threads(threads_num);
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic, 1)
   for (int32_t v = 0; v < resolution_h; v++) {
     for (uint32_t u = 0; u < resolution_w; u++) {
       Color accumlated = Color();

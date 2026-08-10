@@ -34,8 +34,7 @@ void Scene::load_obj(const std::string &filename, const double scale,
     uint32_t offset = 0;
 
     for (uint32_t f = 0; f < obj_shape.mesh.num_face_vertices.size(); f++) {
-      Point3 vertices[3];
-      Vec3 normals[3] = {Vec3(0), Vec3(0), Vec3(0)};
+      Vertex vertices[3];
 
       for (uint8_t v = 0; v < 3; v++) {
         const auto idx = obj_shape.mesh.indices[offset + v];
@@ -48,18 +47,13 @@ void Scene::load_obj(const std::string &filename, const double scale,
         const double ny = (double)obj_attrib.normals[3 * idx.normal_index + 1];
         const double nz = (double)obj_attrib.normals[3 * idx.normal_index + 2];
 
-        vertices[v] = Point3((double)vx, (double)vy, (double)vz) * scale + tr;
-        normals[v] = Vec3(nx, ny, nz);
+        vertices[v] =
+            Vertex(Point3((double)vx, (double)vy, (double)vz) * scale + tr,
+                   Vec3(nx, ny, nz));
       }
 
-      Vec3 normal = normalize(normals[0] + normals[1] + normals[2]);
-      if (normal.len2() < EPS) {
-        normal = normalize(
-            cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
-      }
-
-      std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
-          vertices[0], vertices[1], vertices[2], normal);
+      std::unique_ptr<Shape> shape =
+          std::make_unique<Triangle>(vertices[0], vertices[1], vertices[2]);
 
       Primitive prim = Primitive(shape.get(), primitives.size());
       shapes.emplace_back(std::move(shape));

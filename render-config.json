@@ -17,7 +17,7 @@
       "sensor-width":30,
       "sensor-dir":[0,0,-1],
       "sensor-to-hole":40,
-      "w-scale":500
+      "w-scale":750
     },
 
     "lens":{
@@ -36,7 +36,7 @@
   "renderer":{
     "supersamples":8,
     "samples-per-superpixel":8,
-    "threads-num":8,
+    "threads-num":10,
     "is-test":false
   }
 }
