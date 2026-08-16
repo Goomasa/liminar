@@ -11,6 +11,15 @@ set(exe_file
 
 find_package(OpenMP REQUIRED)
 
+include(FetchContent)
+
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-3.4.14
+)
+FetchContent_MakeAvailable(SDL3)
+
 add_executable(liminar ${exe_file})
 
 target_include_directories(liminar PRIVATE
@@ -19,3 +28,4 @@ target_include_directories(liminar PRIVATE
 )
 
 target_link_libraries(liminar PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(liminar PRIVATE SDL3::SDL3)

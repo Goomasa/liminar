@@ -1,10 +1,17 @@
 #include "renderer.h"
+#include "SDL3/SDL_error.h"
+#include "SDL3/SDL_init.h"
+#include "SDL3/SDL_pixels.h"
+#include "SDL3/SDL_render.h"
+#include "SDL3/SDL_timer.h"
+#include "SDL3/SDL_video.h"
 #include "config/parser.h"
 #include "renderer/camera.h"
 #include "renderer/integrator.h"
 #include "scene/scene.h"
 #include "util/image.h"
 #include "util/utils.h"
+#include <SDL3/SDL.h>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -22,6 +29,7 @@ void Renderer::set_renderer(ObjectNode &node) {
   threads_num =
       (uint32_t)renderer_node.search_key_safe<double>("threads-num", 1);
   is_test = renderer_node.search_key_safe<bool>("is-test", false);
+  has_gui = renderer_node.search_key_safe<bool>("gui", false);
 }
 
 void Renderer::set_camera(ObjectNode &node) {
@@ -110,8 +118,6 @@ void Renderer::render() const {
   double total_inv =
       1. / (double)(supersamples * supersamples * samples_per_spx);
 
-  HitRecord record = HitRecord();
-
   omp_set_num_threads(threads_num);
 
 #pragma omp parallel for schedule(dynamic, 1)
@@ -124,7 +130,8 @@ void Renderer::render() const {
       for (uint32_t sv = 0; sv < supersamples; sv++) {
         for (uint32_t su = 0; su < supersamples; su++) {
           Integrator integrator = Integrator();
-          Point3 pixel_pos = camera->get_pixel_pos(u, v, su, sv, supersamples);
+          Point3 pixel_pos =
+              camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
           Ray ray = camera->get_first_ray(&rnd, pixel_pos);
 
           for (uint32_t s = 0; s < samples_per_spx; s++) {
@@ -161,7 +168,8 @@ void Renderer::test_render() const {
         for (uint32_t su = 0; su < 2; su++) {
           Random rnd = Random(u * v);
           record.reset();
-          Point3 pixel_pos = camera->get_pixel_pos(u, v, su, sv, supersamples);
+          Point3 pixel_pos =
+              camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
           Ray ray = camera->get_first_ray(&rnd, pixel_pos);
           if (scene->test_intersect(ray, &record)) {
             accumlated = accumlated + record.normal / 2. + Color(0.5);
@@ -178,3 +186,121 @@ void Renderer::test_render() const {
 
   save_ppm("test.ppm", image, resolution_w, resolution_h);
 };
+
+inline void update_buffer(const std::vector<Color> &image,
+                          std::vector<uint32_t> &buffer,
+                          const double total_inv) {
+  for (uint32_t i = 0; i < image.size(); i++) {
+    uint8_t r = static_cast<uint8_t>(gamma_(image[i].x * total_inv));
+    uint8_t g = static_cast<uint8_t>(gamma_(image[i].y * total_inv));
+    uint8_t b = static_cast<uint8_t>(gamma_(image[i].z * total_inv));
+    uint8_t a = 255;
+    buffer[i] = (a << 24) | (b << 16) | (g << 8) | r;
+  }
+}
+
+void Renderer::render_with_gui() const {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    std::cerr << "failed to initialize SDL3: " << SDL_GetError() << std::endl;
+    return;
+  }
+
+  uint32_t resolution_w = camera->get_resolution_w();
+  uint32_t resolution_h = camera->get_resolution_h();
+  SDL_Window *sdl_window = SDL_CreateWindow("Image", resolution_w, resolution_h,
+                                            SDL_WINDOW_RESIZABLE);
+  if (!sdl_window) {
+    std::cerr << "failed to create window: " << SDL_GetError() << std::endl;
+    SDL_Quit();
+    return;
+  }
+
+  SDL_Renderer *sdl_renderer = SDL_CreateRenderer(sdl_window, nullptr);
+  if (!sdl_renderer) {
+    std::cerr << "failed to create renderer: " << SDL_GetError() << std::endl;
+    SDL_DestroyWindow(sdl_window);
+    SDL_Quit();
+    return;
+  }
+
+  SDL_Texture *sdl_texture = SDL_CreateTexture(
+      sdl_renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING,
+      resolution_w, resolution_h);
+  if (!sdl_texture) {
+    std::cerr << "failed to create texture: " << SDL_GetError() << std::endl;
+    SDL_DestroyRenderer(sdl_renderer);
+    SDL_DestroyWindow(sdl_window);
+    SDL_Quit();
+    return;
+  }
+
+  uint32_t pixel_num = resolution_w * resolution_h;
+  std::vector<Color> image_buffer(pixel_num, Color());
+  std::vector<uint32_t> sdl_buffer(pixel_num, 0);
+  uint32_t samples_count = 1;
+
+  bool running = true;
+  omp_set_num_threads(threads_num);
+
+  while (running) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_EVENT_QUIT) {
+        running = false;
+      }
+    }
+
+    SDL_Delay(33);
+    if (samples_count > samples_per_spx) {
+      continue;
+    }
+
+    double total_inv =
+        1. / (double)(supersamples * supersamples * samples_count);
+
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int32_t v = 0; v < resolution_h; v++) {
+      for (uint32_t u = 0; u < resolution_w; u++) {
+        uint32_t idx = pixel_num - resolution_w * v - u - 1;
+        Random rnd = Random(u * v + samples_count);
+
+        for (uint32_t sv = 0; sv < supersamples; sv++) {
+          for (uint32_t su = 0; su < supersamples; su++) {
+            Integrator integrator = Integrator();
+            Point3 pixel_pos =
+                camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
+            Ray ray = camera->get_first_ray(&rnd, pixel_pos);
+
+            integrator.reset();
+            integrator.mis_integrate(scene.get(), ray, &rnd);
+            image_buffer[idx] =
+                image_buffer[idx] + integrator.get_value() *
+                                        camera->get_coefficient(ray, pixel_pos);
+          }
+        }
+      }
+    }
+
+    update_buffer(image_buffer, sdl_buffer, total_inv);
+    SDL_UpdateTexture(sdl_texture, nullptr, sdl_buffer.data(),
+                      resolution_w * sizeof(uint32_t));
+
+    SDL_RenderClear(sdl_renderer);
+    SDL_RenderTexture(sdl_renderer, sdl_texture, nullptr, nullptr);
+    SDL_RenderPresent(sdl_renderer);
+
+    std::cout << samples_count << std::endl;
+    samples_count++;
+  }
+
+  for (uint32_t i = 0; i < pixel_num; i++) {
+    image_buffer[i] = image_buffer[i] * 1. /
+                      (double)(supersamples * supersamples * samples_count);
+  }
+  save_ppm("render.ppm", image_buffer, resolution_w, resolution_h);
+
+  SDL_DestroyTexture(sdl_texture);
+  SDL_DestroyRenderer(sdl_renderer);
+  SDL_DestroyWindow(sdl_window);
+  SDL_Quit();
+}

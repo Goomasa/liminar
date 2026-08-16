@@ -2,12 +2,20 @@
 
 ## Dependencies
 - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader.git)
+- [SDL](https://github.com/libsdl-org/SDL)
 - OpenMP
 
-## Usage
-MacOS
+## Build
+**MacOS**
 ```sh
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . 
+git clone git@github.com:Goomasa/liminar.git
+
+cmake -DCMAKE_BUILD_TYPE=Release . -B build
+cmake --build build
+```
+
+**Windows (Visual Studio Generator)**
+```sh
+cmake . -B build 
+cmake --build build --config Release
 ```

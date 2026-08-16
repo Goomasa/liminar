@@ -36,4 +36,6 @@ inline void save_ppm(const std::string &filename,
             gamma_(image[i].z));
   }
   fclose(f);
+
+  std::cout << "saved" << std::endl;
 }

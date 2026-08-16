@@ -15,7 +15,8 @@ public:
                                  const Point3 &pixel_pos) const = 0;
   virtual Ray get_first_ray(Random *rnd, const Point3 &pixel_pos) const = 0;
   virtual Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
-                               uint32_t spx_v, uint32_t superpx_num) const = 0;
+                               uint32_t spx_v, uint32_t superpx_num,
+                               Random *rnd) const = 0;
 };
 
 class PinholeModel : public Camera {
@@ -61,11 +62,12 @@ public:
   }
 
   Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
-                       uint32_t spx_v, uint32_t superpx_num) const override {
-    double du =
-        pixel_width * (px_u + ((double)spx_u + 0.5) / (double)superpx_num);
-    double dv =
-        pixel_height * (px_v + ((double)spx_v + 0.5) / (double)superpx_num);
+                       uint32_t spx_v, uint32_t superpx_num,
+                       Random *rnd) const override {
+    double du = pixel_width *
+                (px_u + ((double)spx_u + rnd->gen()) / (double)superpx_num);
+    double dv = pixel_height *
+                (px_v + ((double)spx_v + rnd->gen()) / (double)superpx_num);
     return sensor_corner + sensor_u * du + sensor_v * dv;
   }
 
@@ -132,11 +134,12 @@ public:
   }
 
   Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
-                       uint32_t spx_v, uint32_t superpx_num) const override {
-    double du =
-        pixel_width * (px_u + ((double)spx_u + 0.5) / (double)superpx_num);
-    double dv =
-        pixel_height * (px_v + ((double)spx_v + 0.5) / (double)superpx_num);
+                       uint32_t spx_v, uint32_t superpx_num,
+                       Random *rnd) const override {
+    double du = pixel_width *
+                (px_u + ((double)spx_u + rnd->gen()) / (double)superpx_num);
+    double dv = pixel_height *
+                (px_v + ((double)spx_v + rnd->gen()) / (double)superpx_num);
     return sensor_corner + sensor_u * du + sensor_v * dv;
   }
 
