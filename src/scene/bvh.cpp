@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <vector>
 
+constexpr double CI = 2;
+constexpr double CT = 3;
+
 inline AABB scene_bbox(const std::vector<Primitive> &prims) {
   AABB bbox = AABB();
   for (const Primitive &prim : prims) {
@@ -63,8 +66,9 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
   for (uint32_t idx = 0; idx < prims.size() * 2 - 1; idx++) {
     std::vector<Primitive> *prims_in_box = &tmp_prims_tree[idx];
+    uint32_t prims_box_size = prims_in_box->size();
 
-    if (prims_in_box->size() == 1) {
+    if (prims_box_size == 1) {
       tree[idx].prim_id = prims_in_box->at(0).id;
       continue;
     }
@@ -72,21 +76,21 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
     uint32_t partition = 1;
     uint8_t best_axis = 0;
     double min_area = INF;
-    std::vector<double> area_left(prims_in_box->size() - 1);
+    std::vector<double> area_left(prims_box_size - 1);
 
     for (uint8_t axis = 0; axis < 3; axis++) {
       sort_primitives(prims_in_box, axis);
 
       AABB left_bbox = AABB(), right_bbox = AABB();
-      for (uint32_t i = 0; i < prims_in_box->size() - 1; i++) {
+      for (uint32_t i = 0; i < prims_box_size - 1; i++) {
         left_bbox = left_bbox + prims_in_box->at(i).shape->get_bbox();
         area_left[i] = left_bbox.get_area();
       }
 
-      for (uint32_t i = prims_in_box->size() - 1; i >= 1; i--) {
+      for (uint32_t i = prims_box_size - 1; i >= 1; i--) {
         right_bbox = right_bbox + prims_in_box->at(i).shape->get_bbox();
         double total_area = area_left[i - 1] + right_bbox.get_area();
-        if (abs((int)(i - prims_in_box->size() / 2)) <= 1 &&
+        if (abs((int)(i - prims_box_size / 2)) <= prims_box_size / 4 &&
             total_area < min_area) {
           min_area = total_area;
           partition = i;
@@ -112,11 +116,17 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
   }
 }
 
-double BVH::get_area(const uint32_t id) const {
-  if (tree[id].left == -1) {
-    return tree[id].bbox.get_area();
-  } else {
-    return tree[id].bbox.get_area() + get_area(tree[id].left) +
-           get_area(tree[id].left + 1);
+double BVH::get_sah() const {
+  double cost = 0;
+  double root_area = tree[0].bbox.get_area();
+
+  for (BVHNode node : tree) {
+    if (node.left == -1) {
+      cost += node.bbox.get_area() * CI / root_area;
+    } else {
+      cost += node.bbox.get_area() * CT / root_area;
+    }
   }
+
+  return cost;
 }

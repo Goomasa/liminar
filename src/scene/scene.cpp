@@ -86,12 +86,15 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   const Color ke =
       Vec3(material.emission[0], material.emission[1], material.emission[2]);
 
+  std::unique_ptr<Bxdf> bxdf;
+
   if (ke.max() > 0) {
     prim->emission = ke;
+    bxdf = std::make_unique<Lambertian>(kd);
+    prim->bxdf = bxdf.get();
+    bxdfs.emplace_back(std::move(bxdf));
     return;
   }
-
-  std::unique_ptr<Bxdf> bxdf;
 
   switch (material.illum) {
   case 5: {
@@ -117,7 +120,7 @@ void Scene::set_sphere() {
       std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Bxdf> bxdf = std::make_unique<Glass>(Color(1.), 1.5);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
-  primitives.emplace_back(std::move(prim));
-  shapes.emplace_back(std::move(sphere));
-  bxdfs.emplace_back(std::move(bxdf));
+  // primitives.emplace_back(std::move(prim));
+  // shapes.emplace_back(std::move(sphere));
+  // bxdfs.emplace_back(std::move(bxdf));
 }

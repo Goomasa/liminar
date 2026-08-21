@@ -171,7 +171,7 @@ void Renderer::test_render() const {
           Point3 pixel_pos =
               camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
           Ray ray = camera->get_first_ray(&rnd, pixel_pos);
-          if (scene->test_intersect(ray, &record)) {
+          if (scene->intersect(ray, &record)) {
             accumlated = accumlated + record.normal / 2. + Color(0.5);
           } else {
             accumlated = accumlated + Color();

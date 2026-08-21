@@ -14,7 +14,7 @@ struct Vertex {
   Vertex() : position(Point3()), normal(Vec3(1, 0, 0)) {}
 
   Vertex(const Point3 &pos, const Vec3 &normal)
-      : position(pos), normal(normal) {}
+      : position(pos), normal(normalize(normal)) {}
 };
 
 class Shape {
@@ -73,7 +73,7 @@ public:
 
     record->distance = t;
     record->hitpoint = pos;
-    record->normal = geometry_normal;
+    record->normal = tlerp<Vec3>(p.normal, q.normal, r.normal, Vec2(u, v));
 
     return true;
   }
@@ -127,8 +127,13 @@ private:
   }
 
   template <typename T>
-  inline T tlerp(const T pv, const T qv, const T rv, const Point3 pos) const {
+  inline T tlerp(const T pv, const T qv, const T rv, const Point3 &pos) const {
     Vec2 uv = get_uv(pos);
+    return (1 - uv.u - uv.v) * pv + uv.u * qv + uv.v * rv;
+  }
+
+  template <typename T>
+  inline T tlerp(const T pv, const T qv, const T rv, const Vec2 &uv) const {
     return (1 - uv.u - uv.v) * pv + uv.u * qv + uv.v * rv;
   }
 };

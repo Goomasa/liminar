@@ -36,6 +36,8 @@ public:
   }
 
   virtual bool is_specular() const = 0;
+
+  virtual void display() const = 0;
 };
 
 class Lambertian : public Bxdf {
@@ -56,6 +58,11 @@ public:
                       const bool into) const override;
 
   bool is_specular() const override { return false; }
+
+  void display() const override {
+    std::cout << "Lambertian, color: ";
+    color.display();
+  }
 };
 
 class Mirror : public Bxdf {
@@ -80,6 +87,11 @@ public:
   }
 
   bool is_specular() const override { return true; }
+
+  void display() const override {
+    std::cout << "Mirror, color: ";
+    color.display();
+  }
 };
 
 class Glass : public Bxdf {
@@ -99,4 +111,9 @@ public:
                       const bool into) const override;
 
   bool is_specular() const override { return true; }
+
+  void display() const override {
+    std::cout << "Mirror, ior: " << ior << " , color: ";
+    color.display();
+  }
 };

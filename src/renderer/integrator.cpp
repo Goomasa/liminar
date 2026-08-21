@@ -26,18 +26,18 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     record.reset();
     if (!scene->intersect(now_ray, &record)) {
       value = value + scene->background * (throughput / pdf);
-      return;
+      break;
     }
 
     Primitive *prim = &scene->primitives[record.id];
     if (prim->is_light() && dot(record.normal, now_ray.dir) < 0.) {
       value = value + prim->emission * (throughput / pdf);
-      return;
+      break;
     }
 
     double roullete_prob = roullete(depth, prim->bxdf->is_specular());
     if (rnd->gen() > roullete_prob) {
-      return;
+      break;
     }
     pdf *= roullete_prob;
 

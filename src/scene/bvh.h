@@ -26,12 +26,12 @@ public:
     sah_builder(prims);
 
     tree.shrink_to_fit();
-    std::cout << "constructed" << std::endl;
+    std::cout << "SAH: " << get_sah() << std::endl;
   }
 
   void basic_builder(const std::vector<Primitive> &prims);
 
   void sah_builder(const std::vector<Primitive> &prims);
 
-  double get_area(const uint32_t id = 0) const;
+  double get_sah() const;
 };
