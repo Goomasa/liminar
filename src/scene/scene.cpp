@@ -97,8 +97,12 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   }
 
   switch (material.illum) {
-  case 5: {
+  case 3: {
     bxdf = std::make_unique<Mirror>(kd);
+  } break;
+  case 5: {
+    auto ns = material.shininess / 1000;
+    bxdf = std::make_unique<MicroBrdf>(kd, ns);
   } break;
   case 7: {
     const double ior = material.ior;
@@ -118,9 +122,9 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
 void Scene::set_sphere() {
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(12, 7, -15), 7);
-  std::unique_ptr<Bxdf> bxdf = std::make_unique<Glass>(Color(1.), 1.5);
+  std::unique_ptr<Bxdf> bxdf = std::make_unique<MicroBrdf>(Color(1.), 0.3);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
-  // primitives.emplace_back(std::move(prim));
-  // shapes.emplace_back(std::move(sphere));
-  // bxdfs.emplace_back(std::move(bxdf));
+  primitives.emplace_back(std::move(prim));
+  shapes.emplace_back(std::move(sphere));
+  bxdfs.emplace_back(std::move(bxdf));
 }
