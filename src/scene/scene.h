@@ -41,10 +41,10 @@ struct Scene {
 
   bool intersect(Ray &ray, HitRecord *record,
                  const uint32_t node_id = 0) const {
-    if (bvh.tree[node_id].left == -1) {
-      primitives[bvh.tree[node_id].prim_id].hit(ray, record);
+    if (bvh.tree[node_id].left & 1) {
+      primitives[bvh.tree[node_id].left >> 1].hit(ray, record);
     } else if (bvh.tree[node_id].bbox.hit(ray, record)) {
-      uint32_t left_id = bvh.tree[node_id].left;
+      uint32_t left_id = bvh.tree[node_id].left >> 1;
       intersect(ray, record, left_id);
       intersect(ray, record, left_id + 1);
     }

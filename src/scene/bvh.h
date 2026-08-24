@@ -7,13 +7,11 @@
 
 struct BVHNode {
   AABB bbox;
-  int32_t left;
-  uint32_t prim_id;
+  uint32_t left; // the first bit is set -> leaf
 
-  BVHNode() : bbox(AABB()), left(-1), prim_id(0) {}
+  BVHNode() : bbox(AABB()), left(-1) {}
 
-  BVHNode(const AABB &bbox, const int32_t left, const uint32_t prim)
-      : bbox(bbox), left(left), prim_id(prim) {}
+  BVHNode(const AABB &bbox, const int32_t left) : bbox(bbox), left(left) {}
 };
 
 class BVH {

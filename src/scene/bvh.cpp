@@ -28,13 +28,13 @@ void BVH::basic_builder(const std::vector<Primitive> &prims) {
   }
 
   std::vector<std::vector<Primitive>> tmp_prims_tree = {prims};
-  tree.emplace_back(BVHNode(scene_bbox(prims), -1, 0));
+  tree.emplace_back(BVHNode(scene_bbox(prims), 0));
 
   for (uint32_t idx = 0; idx < prims.size() * 2 - 1; idx++) {
     std::vector<Primitive> *prims_in_box = &tmp_prims_tree[idx];
 
     if (prims_in_box->size() == 1) {
-      tree[idx].prim_id = prims_in_box->at(0).id;
+      tree[idx].left = (prims_in_box->at(0).id << 1) | 1;
       continue;
     }
 
@@ -47,10 +47,10 @@ void BVH::basic_builder(const std::vector<Primitive> &prims) {
                                        prims_in_box->end());
     prims_in_box->clear();
     prims_in_box->shrink_to_fit();
-    tree[idx].left = tree.size();
+    tree[idx].left = tree.size() << 1;
 
-    tree.emplace_back(BVHNode(scene_bbox(left_prims), -1, 0));
-    tree.emplace_back(scene_bbox(right_prims), -1, 0);
+    tree.emplace_back(BVHNode(scene_bbox(left_prims), 0));
+    tree.emplace_back(scene_bbox(right_prims), 0);
     tmp_prims_tree.emplace_back(std::move(left_prims));
     tmp_prims_tree.emplace_back(std::move(right_prims));
   }
@@ -62,14 +62,14 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
   }
 
   std::vector<std::vector<Primitive>> tmp_prims_tree = {prims};
-  tree.emplace_back(BVHNode(scene_bbox(prims), -1, 0));
+  tree.emplace_back(BVHNode(scene_bbox(prims), 0));
 
   for (uint32_t idx = 0; idx < prims.size() * 2 - 1; idx++) {
     std::vector<Primitive> *prims_in_box = &tmp_prims_tree[idx];
     uint32_t prims_box_size = prims_in_box->size();
 
     if (prims_box_size == 1) {
-      tree[idx].prim_id = prims_in_box->at(0).id;
+      tree[idx].left = (prims_in_box->at(0).id << 1) | 1;
       continue;
     }
 
@@ -107,10 +107,10 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
                                        prims_in_box->end());
     prims_in_box->clear();
     prims_in_box->shrink_to_fit();
-    tree[idx].left = tree.size();
+    tree[idx].left = tree.size() << 1;
 
-    tree.emplace_back(BVHNode(scene_bbox(left_prims), -1, 0));
-    tree.emplace_back(scene_bbox(right_prims), -1, 0);
+    tree.emplace_back(BVHNode(scene_bbox(left_prims), 0));
+    tree.emplace_back(scene_bbox(right_prims), 0);
     tmp_prims_tree.emplace_back(std::move(left_prims));
     tmp_prims_tree.emplace_back(std::move(right_prims));
   }

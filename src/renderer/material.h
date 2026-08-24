@@ -174,8 +174,61 @@ private:
     double tmp2 = 1 + tan_theta2 / (alpha * alpha);
     return 1. / (tmp1 * tmp2 * tmp2);
   }
+};
 
-  inline double ggx_vndf(const Vec3 &wi, const Vec3 &wm, const Vec3 &n) const {
-    return ggx_g1(wi, n) * dot(wi, wm) * ggx_d(wm, n) / fabs(dot(wi, n));
+class MicroBtdf : public Bxdf {
+public:
+  Color color;
+  double ior;
+  double alpha;
+
+  MicroBtdf(const Color &color, const double ior, const double roughness)
+      : color(color), ior(ior),
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
+
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+             const bool into) const override;
+
+  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
+              Random *rnd) const override;
+
+  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                      const bool into) const override;
+
+  bool is_specular() const override { return alpha < EPS; }
+
+  void display() const override {
+    std::cout << "Microfacet btdf, ior: " << ior << " , alpha: " << alpha
+              << " , color: ";
+    color.display();
+  }
+
+private:
+  double ggx_lambda(const Vec3 &w, const Vec3 &n) const {
+    double tan_theta2 = 1. / pow(dot(w, n), 2) - 1;
+    return (-1 + sqrt(1 + alpha * alpha * tan_theta2)) * 0.5;
+  }
+
+  inline double ggx_g1(const Vec3 &w, const Vec3 &n) const {
+    return 1. / (1 + ggx_lambda(w, n));
+  }
+
+  inline double ggx_g2(const Vec3 &wi, const Vec3 &wo, const Vec3 &n) const {
+    return 1. / (1 + ggx_lambda(wi, n) + ggx_lambda(wo, n));
+  }
+
+  double ggx_d(const Vec3 &wm, const Vec3 &n) const {
+    double cos_theta2 = pow(dot(wm, n), 2);
+    double tan_theta2 = 1. / cos_theta2 - 1;
+    double tmp1 = PI * pow(alpha * cos_theta2, 2);
+    double tmp2 = 1 + tan_theta2 / (alpha * alpha);
+    return 1. / (tmp1 * tmp2 * tmp2);
+  }
+
+  double ggx_j(const Vec3 &wi, const Vec3 &wo, const Vec3 &wm,
+               const double ior_i, const double ior_o) const {
+    double r = ior_o / ior_i;
+    double denom = (wo + r * r * wi).len2();
+    return dot(wi, wm) * r * r / denom;
   }
 };
