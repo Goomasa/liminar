@@ -231,3 +231,40 @@ Vec3 MicroBtdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
     return refraction_vec;
   }
 }
+
+Color MicroBrdfAniso::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                           const bool into) const {
+  Vec3 wm = normalize(wi + wo);
+  double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
+  Color fresnel = schlick_fresnel(color, wi, wm);
+  return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+}
+
+Vec3 MicroBrdfAniso::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
+                            Random *rnd) const {
+  Vec3 w = normal;
+  Vec3 u = fabs(w.x) > EPS ? normalize(cross(Vec3(0, 1, 0), w))
+                           : normalize(cross(Vec3(1, 0, 0), w));
+  Vec3 v = cross(w, u);
+
+  Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
+  Vec3 vh = normalize(Vec3(alpha_x * ve.x, alpha_y * ve.y, ve.z));
+
+  while (true) {
+    double phi = 2.0 * PI * rnd->gen();
+    double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
+    double sin_theta = sqrt(clamp01(1.0 - z * z));
+    double x = sin_theta * cos(phi);
+    double y = sin_theta * sin(phi);
+    Vec3 c = Vec3(x, y, z);
+    Vec3 h = c + vh;
+
+    Vec3 wm_tmp = Vec3(alpha_x * h.x, alpha_y * h.y, h.z);
+    Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
+    Vec3 wi = reflection_dir(wo, wm);
+
+    if (dot(wi, normal) > 0.) {
+      return wi;
+    }
+  }
+}

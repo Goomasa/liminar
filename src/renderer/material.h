@@ -270,3 +270,84 @@ private:
     }
   }
 };
+
+class MicroBrdfAniso : public Bxdf {
+public:
+  Color color;
+  double alpha_x, alpha_y;
+
+  MicroBrdfAniso(const Color &color, const double roughness_x,
+                 const double roughness_y)
+      : color(color), alpha_x(std::clamp(roughness_x * roughness_x, 0.001, 1.)),
+        alpha_y(std::clamp(roughness_y * roughness_y, 0.001, 1.)) {}
+
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+             const bool into) const override;
+
+  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
+              Random *rnd) const override;
+
+  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                      const bool into) const override {
+    Vec3 wm = normalize(wi + wo);
+    return ggx_g1(wo, normal) * ggx_d(wm, normal) * 0.25 /
+           fabs(dot(wo, normal));
+  }
+
+  bool is_specular() const override { return alpha_x < EPS || alpha_y < EPS; }
+
+  void display() const override {
+    std::cout << "Microfacet brdf, alpha-x: " << alpha_x
+              << " , alpha-y: " << alpha_y << " , color: ";
+    color.display();
+  }
+
+private:
+  double ggx_lambda(const Vec3 &w, const Vec3 &n) const {
+    double cos_theta = dot(w, n);
+    double sin_theta2 = 1 - cos_theta * cos_theta;
+    double tan_theta2 = 1. / cos_theta * cos_theta - 1;
+
+    Vec3 z = n;
+    Vec3 x = fabs(z.x) > EPS ? normalize(cross(Vec3(0, 1, 0), z))
+                             : normalize(cross(Vec3(1, 0, 0), z));
+    Vec3 y = cross(z, x);
+
+    Vec3 w_tmp = w - z * cos_theta;
+    double cos_phi2 = pow(dot(w_tmp, x), 2) / sin_theta2;
+    double sin_phi2 = pow(dot(w_tmp, y), 2) / sin_theta2;
+
+    return (-1 + sqrt(1 + tan_theta2 * (alpha_x * alpha_x * cos_phi2 +
+                                        alpha_y * alpha_y * sin_phi2))) *
+           0.5;
+  }
+
+  inline double ggx_g1(const Vec3 &w, const Vec3 &n) const {
+    return 1. / (1 + ggx_lambda(w, n));
+  }
+
+  inline double ggx_g2(const Vec3 &wi, const Vec3 &wo, const Vec3 &n) const {
+    return 1. / (1 + ggx_lambda(wi, n) + ggx_lambda(wo, n));
+  }
+
+  double ggx_d(const Vec3 &wm, const Vec3 &n) const {
+    double cos_theta = dot(wm, n);
+    double cos_theta2 = cos_theta * cos_theta;
+    double sin_theta2 = 1 - cos_theta2;
+    double tan_theta2 = 1. / cos_theta2 - 1;
+
+    Vec3 z = n;
+    Vec3 x = fabs(z.x) > EPS ? normalize(cross(Vec3(0, 1, 0), z))
+                             : normalize(cross(Vec3(1, 0, 0), z));
+    Vec3 y = cross(z, x);
+
+    Vec3 w_tmp = wm - z * cos_theta;
+    double cos_phi2 = pow(dot(w_tmp, x), 2) / sin_theta2;
+    double sin_phi2 = pow(dot(w_tmp, y), 2) / sin_theta2;
+
+    double tmp1 = PI * alpha_x * alpha_y * cos_theta2 * cos_theta2;
+    double tmp2 = 1 + tan_theta2 * (cos_phi2 / (alpha_x * alpha_x) +
+                                    sin_phi2 / (alpha_y * alpha_y));
+    return 1. / (tmp1 * tmp2 * tmp2);
+  }
+};
