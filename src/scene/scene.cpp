@@ -111,6 +111,11 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   default: {
     bxdf = std::make_unique<Lambertian>(kd);
   } break;
+  case 9: {
+    auto ns = material.shininess / 1000;
+    const double ior = material.ior;
+    bxdf = std::make_unique<MicroBtdf>(kd, ior, ns);
+  } break;
   }
 
   prim->bxdf = bxdf.get();
@@ -122,7 +127,7 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
 void Scene::set_sphere() {
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(12, 7, -15), 7);
-  std::unique_ptr<Bxdf> bxdf = std::make_unique<MicroBrdf>(Color(1.), 0.3);
+  std::unique_ptr<Bxdf> bxdf = std::make_unique<Mirror>(Color(1.));
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   primitives.emplace_back(std::move(prim));
   shapes.emplace_back(std::move(sphere));

@@ -15,6 +15,11 @@ public:
   virtual double sampling_pdf(const Vec3 &wo, const Vec3 &wi,
                               const Vec3 &normal, const bool into) const = 0;
 
+  virtual bool is_specular() const = 0;
+
+  virtual void display() const = 0;
+
+protected:
   static Vec3 reflection_dir(const Vec3 &wo, const Vec3 &normal) {
     return normalize(normal * 2. * dot(normal, wo) - wo);
   }
@@ -40,10 +45,6 @@ public:
                                const Vec3 &wm) {
     return f0 + (Vec3(1) - f0) * pow(1. - dot(wi, wm), 5);
   }
-
-  virtual bool is_specular() const = 0;
-
-  virtual void display() const = 0;
 };
 
 class Lambertian : public Bxdf {
@@ -226,9 +227,46 @@ private:
   }
 
   double ggx_j(const Vec3 &wi, const Vec3 &wo, const Vec3 &wm,
-               const double ior_i, const double ior_o) const {
-    double r = ior_o / ior_i;
-    double denom = (wo + r * r * wi).len2();
-    return dot(wi, wm) * r * r / denom;
+               const double r) const {
+    double denom = pow(dot(wo, wm) + dot(wi, wm) / r, 2) * r * r;
+    return fabs(dot(wo, wm)) / denom;
+  }
+
+  Vec3 get_half_vec(const Vec3 &wi, const Vec3 &wo, const double r) const {
+    return -1. * normalize(wi + r * wo);
+  }
+
+  double ggx_vndf(const Vec3 &wi, const Vec3 &wo, const Vec3 &wm,
+                  const Vec3 &normal) const {
+    return ggx_g1(wo, normal) * fabs(dot(wo, wm)) * ggx_d(wm, normal) /
+           fmax(fabs(dot(wo, normal)), EPS);
+  }
+
+  Vec3 sample_vndf(const Vec3 &wo, const Vec3 &normal, const bool into,
+                   Random *rnd) const {
+    Vec3 w = normal;
+    Vec3 u = fabs(w.x) > EPS ? normalize(cross(Vec3(0, 1, 0), w))
+                             : normalize(cross(Vec3(1, 0, 0), w));
+    Vec3 v = cross(w, u);
+
+    Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
+    Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
+
+    while (true) {
+      double phi = 2.0 * PI * rnd->gen();
+      double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
+      double sin_theta = sqrt(clamp01(1.0 - z * z));
+      double x = sin_theta * cos(phi);
+      double y = sin_theta * sin(phi);
+      Vec3 c = Vec3(x, y, z);
+      Vec3 h = c + vh;
+
+      Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
+      Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
+
+      if (dot(reflection_dir(wo, wm), normal) > 0.) {
+        return wm;
+      }
+    }
   }
 };
