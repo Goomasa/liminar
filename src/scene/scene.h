@@ -52,8 +52,12 @@ struct Scene {
     return record->id != -1;
   }
 
-  uint32_t sample_light_uniform(Random *rnd) const {
-    uint32_t sampled = rnd->gen_uint() % lights.size();
+  int32_t sample_light_uniform(Random *rnd) const {
+    if (lights.empty()) {
+      return -1;
+    }
+
+    int32_t sampled = rnd->gen_uint() % lights.size();
     return lights[sampled];
   }
 

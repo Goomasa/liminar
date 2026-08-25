@@ -5,8 +5,8 @@
 #include <cmath>
 #include <cstdint>
 
-inline double roullete(const uint32_t depth, const bool is_specular) {
-  if (depth < DEPTH || is_specular) {
+inline double roullete(const uint32_t depth) {
+  if (depth < DEPTH) {
     return 1.0;
   } else if (depth > MAX_DEPTH) {
     return 0.;
@@ -35,7 +35,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
       break;
     }
 
-    double roullete_prob = roullete(depth, prim->bxdf->is_specular());
+    double roullete_prob = roullete(depth);
     if (rnd->gen() > roullete_prob) {
       break;
     }
@@ -80,7 +80,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       break;
     }
 
-    double roullete_prob = roullete(depth, prim->bxdf->is_specular());
+    double roullete_prob = roullete(depth);
     if (rnd->gen() > roullete_prob) {
       break;
     }
@@ -92,8 +92,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     wo = -1. * now_ray.dir;
     bool into = dot(orienting_normal, record.normal) > 0.;
 
-    if (!prim->bxdf->is_specular()) {
-      uint32_t light_id = scene->sample_light_uniform(rnd);
+    int32_t light_id = scene->sample_light_uniform(rnd);
+    if (!prim->bxdf->is_specular() && light_id >= 0) {
       Primitive *light = &scene->primitives[light_id];
       double pdf_sample_light, pdf_sample_surface_area, pdf_bxdf;
       Point3 pos_on_light =
