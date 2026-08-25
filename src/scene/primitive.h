@@ -4,7 +4,6 @@
 #include "renderer/ray.h"
 #include "scene/aabb.h"
 #include "util/utils.h"
-#include <cmath>
 #include <cstdint>
 
 struct Vertex {
@@ -47,36 +46,7 @@ public:
         .fix();
   }
 
-  bool hit(Ray &ray, HitRecord *record) const override {
-    double dn = dot(ray.dir, geometry_normal);
-    if (fabs(dn) < EPS) {
-      return false;
-    }
-
-    double t = dot(geometry_normal, p.position - ray.org) / dn;
-    if (t > record->distance || t < 0) {
-      return false;
-    }
-
-    Point3 pos = ray.org + t * ray.dir;
-    Vec3 p_pos = pos - p.position;
-    Vec3 pq = q.position - p.position;
-    Vec3 pr = r.position - p.position;
-
-    double u = dot(cross(pr, p_pos), geometry_normal) /
-               dot(cross(pr, pq), geometry_normal);
-    double v = dot(cross(pq, p_pos), geometry_normal) /
-               dot(cross(pq, pr), geometry_normal);
-    if (u + v > 1. || u < 0 || v < 0) {
-      return false;
-    }
-
-    record->distance = t;
-    record->hitpoint = pos;
-    record->normal = tlerp<Vec3>(p.normal, q.normal, r.normal, Vec2(u, v));
-
-    return true;
-  }
+  bool hit(Ray &ray, HitRecord *record) const override;
 
   Point3 get_center() const override {
     return (p.position + q.position + r.position) / 3.;
@@ -94,20 +64,7 @@ public:
     return 1. / (cross(pq, pr).len() * 0.5);
   }
 
-  Point3 sample_surface(Random *rnd, double *pdf) const override {
-    Vec3 pq = q.position - p.position;
-    Vec3 pr = r.position - p.position;
-
-    double r1 = rnd->gen();
-    double r2 = rnd->gen();
-    if (r1 + r2 > 1.) {
-      r1 = 1. - r1;
-      r2 = 1. - r2;
-    }
-
-    *pdf = 1. / (cross(pq, pr).len() * 0.5);
-    return p.position + pq * r1 + pr * r2;
-  }
+  Point3 sample_surface(Random *rnd, double *pdf) const override;
 
   Vec3 get_normal(const Point3 &pos) const override {
     return tlerp<Vec3>(p.normal, q.normal, r.normal, pos);
@@ -149,33 +106,7 @@ public:
     return AABB(center - Vec3(radius), center + Vec3(radius));
   }
 
-  bool hit(Ray &ray, HitRecord *record) const override {
-    Vec3 oc = center - ray.org;
-    double b = dot(oc, ray.dir);
-    double d = b * b - oc.len2() + radius * radius;
-
-    if (d < 0) {
-      return false;
-    }
-
-    double t1 = b - sqrt(d), t2 = b + sqrt(d), t;
-    if (t1 > 0.) {
-      t = t1;
-    } else if (t2 > 0.) {
-      t = t2;
-    } else {
-      return false;
-    }
-
-    if (t > record->distance) {
-      return false;
-    }
-
-    record->distance = t;
-    record->hitpoint = ray.org + ray.dir * t;
-    record->normal = normalize(ray.dir * t - oc);
-    return true;
-  }
+  bool hit(Ray &ray, HitRecord *record) const override;
 
   Point3 get_center() const override { return center; }
 
@@ -194,6 +125,72 @@ public:
   Vec3 get_normal(const Point3 &pos) const override {
     return normalize(pos - center);
   }
+};
+
+class Cylinder : public Shape {
+public:
+  Point3 bottom;
+  Vec3 dir;
+  double radius, height;
+
+  Cylinder(const Point3 &bottom, const Vec3 &dir, const double r,
+           const double h)
+      : bottom(bottom), dir(normalize(dir)), radius(r), height(h) {}
+
+  AABB get_bbox() const override {
+    Point3 top = bottom + height * dir;
+    return AABB(bottom - Vec3(radius), bottom + Vec3(radius)) +
+           AABB(top - Vec3(radius), top + Vec3(radius));
+  }
+
+  bool hit(Ray &ray, HitRecord *record) const override;
+
+  Point3 get_center() const override { return bottom + dir * height * 0.5; }
+
+  double get_area() const override { return 2. * PI * radius * height; }
+
+  double pdf_sample_surface_area() const override {
+    // do not use
+    return 1.;
+  }
+
+  Point3 sample_surface(Random *rnd, double *pdf) const override {
+    // do not use
+    return 1.;
+  }
+
+  Vec3 get_normal(const Point3 &pos) const override {
+    double k = dot(dir, pos - bottom);
+    return normalize(pos - bottom - k * dir);
+  }
+};
+
+class Disk : public Shape {
+public:
+  Point3 center;
+  Vec3 normal;
+  double radius;
+
+  Disk(const Point3 &c, const Vec3 &n, const double r)
+      : center(c), normal(normalize(n)), radius(r) {}
+
+  AABB get_bbox() const override {
+    return AABB(center - Vec3(radius), center + Vec3(radius)).fix();
+  }
+
+  bool hit(Ray &ray, HitRecord *record) const override;
+
+  Point3 get_center() const override { return center; }
+
+  double get_area() const override { return PI * radius * radius; }
+
+  double pdf_sample_surface_area() const override {
+    return 1. / (PI * radius * radius);
+  }
+
+  Point3 sample_surface(Random *rnd, double *pdf) const override;
+
+  Vec3 get_normal(const Point3 &pos) const override { return normal; }
 };
 
 class Primitive {

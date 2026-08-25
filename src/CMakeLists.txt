@@ -5,6 +5,7 @@ set(exe_file
     renderer/renderer.cpp
     scene/scene.cpp
     scene/bvh.cpp
+    scene/primitive.cpp
     config/lexer.cpp
     config/parser.cpp
 )

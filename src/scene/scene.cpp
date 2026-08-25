@@ -124,13 +124,21 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   return;
 }
 
-void Scene::set_sphere() {
+void Scene::set_primitive() {
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Bxdf> bxdf =
       std::make_unique<MicroBrdfAniso>(Color(1.), 0.5, 0.2);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
-  primitives.emplace_back(std::move(prim));
-  shapes.emplace_back(std::move(sphere));
-  bxdfs.emplace_back(std::move(bxdf));
+  // primitives.emplace_back(std::move(prim));
+  // shapes.emplace_back(std::move(sphere));
+  // bxdfs.emplace_back(std::move(bxdf));
+
+  std::unique_ptr<Shape> cylinder =
+      std::make_unique<Cylinder>(Point3(12, 7, -12), Vec3(-0.3, 0, -1), 7, 10);
+  std::unique_ptr<Bxdf> bxdf2 = std::make_unique<Lambertian>(Color(1.));
+  Primitive prim2 = Primitive(cylinder.get(), bxdf2.get(), primitives.size());
+  primitives.emplace_back(std::move(prim2));
+  shapes.emplace_back(std::move(cylinder));
+  bxdfs.emplace_back(std::move(bxdf2));
 }

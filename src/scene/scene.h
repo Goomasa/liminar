@@ -19,7 +19,7 @@ struct Scene {
   Color background;
   BVH bvh;
 
-  Scene(const Color &background) : background(background) { set_sphere(); }
+  Scene(const Color &background) : background(background) { set_primitive(); }
 
   void load_obj(const std::string &filename, const double scale = 1.,
                 const Vec3 &tr = Vec3());
@@ -62,5 +62,5 @@ struct Scene {
   }
 
 private:
-  void set_sphere();
+  void set_primitive();
 };
