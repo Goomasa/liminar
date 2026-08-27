@@ -1,5 +1,6 @@
 {
   "scene":{
+    "background-type":"solid",
     "background":[0,0,0],
     "models":{
       "path":"models/test-box",

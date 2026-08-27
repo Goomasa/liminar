@@ -9,6 +9,7 @@
 #include "renderer/camera.h"
 #include "renderer/integrator.h"
 #include "scene/scene.h"
+#include "scene/texture.h"
 #include "util/image.h"
 #include "util/utils.h"
 #include <SDL3/SDL.h>
@@ -84,8 +85,26 @@ void Renderer::set_camera(ObjectNode &node) {
 
 void Renderer::set_scene(ObjectNode &node) {
   ObjectNode scene_node = node.search_key<ObjectNode>("scene");
-  Color background = vector_to_vec3(
-      scene_node.search_key_safe<std::vector<double>>("background", {0, 0, 0}));
+  std::string background_type =
+      scene_node.search_key_safe<std::string>("background-type", "colid");
+  std::unique_ptr<Texture> background;
+
+  if (background_type == "solid") {
+    Color bcolor =
+        vector_to_vec3(scene_node.search_key_safe<std::vector<double>>(
+            "background", {0, 0, 0}));
+    background = std::make_unique<SolidColor>(bcolor);
+  } else if (background_type == "hgrad") {
+    Color bottom_color =
+        vector_to_vec3(scene_node.search_key_safe<std::vector<double>>(
+            "bottom-color", {0, 0, 0}));
+    Color top_color =
+        vector_to_vec3(scene_node.search_key_safe<std::vector<double>>(
+            "top-color", {0, 0, 0}));
+    background = std::make_unique<HGradationColor>(bottom_color, top_color);
+  } else {
+    // load texture
+  }
 
   scene = std::make_unique<Scene>(background);
 

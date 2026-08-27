@@ -4,6 +4,7 @@
 #include "renderer/ray.h"
 #include "scene/bvh.h"
 #include "scene/primitive.h"
+#include "scene/texture.h"
 #include "util/random.h"
 #include "util/utils.h"
 
@@ -16,10 +17,13 @@ struct Scene {
   std::vector<std::unique_ptr<Shape>> shapes;
   std::vector<Primitive> primitives;
   std::vector<uint32_t> lights;
-  Color background;
+  std::unique_ptr<Texture> background;
   BVH bvh;
 
-  Scene(const Color &background) : background(background) { set_primitive(); }
+  Scene(std::unique_ptr<Texture> &background)
+      : background(std::move(background)) {
+    set_primitive();
+  }
 
   void load_obj(const std::string &filename, const double scale = 1.,
                 const Vec3 &tr = Vec3());
