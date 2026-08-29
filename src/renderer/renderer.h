@@ -15,7 +15,7 @@ public:
   bool is_test = false;
   bool has_gui = false;
 
-  Renderer(const std::string &filename = "render-setting.json") {
+  Renderer(const std::string &filename = "settings/test-setting.json") {
     ObjectNode node = load_json(filename);
     set_camera(node);
     set_scene(node);

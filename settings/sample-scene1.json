@@ -1,0 +1,46 @@
+{
+  "scene":{
+    "background-type":"hgrad",
+    "background":"brown_photostudio.hdr",
+    "bottom-color":[2,2,2],
+    "top-color":[0.1,0.1,0.1],
+    "models":{
+      "path":"models/empty",
+      "scale":1.0,
+      "translation":[0,0,0]
+    }
+  },
+
+  "camera":{
+    "model":"pinhole",
+    "pinhole":{
+      "resolution-w":400,
+      "resolution-h":400,
+      "sensor-center":[0,25,50],
+      "sensor-width":20,
+      "sensor-dir":[0,0,-1],
+      "sensor-to-hole":10,
+      "w-scale":10
+    },
+
+    "lens":{
+      "resolution-w":400,
+      "resolution-h":400,
+      "sensor-center":[0,25,120],
+      "sensor-width":30,
+      "sensor-dir":[0,0,-1],
+      "sensor-to-lens":40,
+      "lens-radius":2,
+      "focal-distance":96,
+      "w-scale":1
+    }
+  },
+
+  "renderer":{
+    "supersamples":8,
+    "samples-per-superpixel":4,
+    "threads-num":10,
+    "is-test":false,
+    "gui":false
+  }
+}

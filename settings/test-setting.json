@@ -18,7 +18,7 @@
       "sensor-width":30,
       "sensor-dir":[0,0,-1],
       "sensor-to-hole":40,
-      "w-scale":800
+      "w-scale":10
     },
 
     "lens":{
@@ -30,7 +30,7 @@
       "sensor-to-lens":42,
       "lens-radius":2,
       "focal-distance":96,
-      "w-scale":100
+      "w-scale":1
     }
   },
 

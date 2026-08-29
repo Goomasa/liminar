@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdint>
 
+constexpr double W_SCALE_COEFF = 0.05;
+
 class Camera {
 public:
   virtual ~Camera() = default;
@@ -39,7 +41,8 @@ public:
     sensor_corner = sensor_center - sensor_u * sensor_width / 2. -
                     sensor_v * sensor_height / 2.;
 
-    sensitivity = w_scale / (pixel_width * pixel_height);
+    sensitivity = w_scale * W_SCALE_COEFF * (sensor_center - hole_pos).len2() /
+                  (pixel_width * pixel_height);
   }
 
   uint32_t get_resolution_w() const override { return resolution_w; }
@@ -107,7 +110,9 @@ public:
 
     lens_center = sensor_center + sensor_dir * sensor_to_lens;
 
-    sensitivity = w_scale / (pixel_width * pixel_height);
+    sensitivity = w_scale * W_SCALE_COEFF *
+                  (sensor_center - lens_center).len2() /
+                  (pixel_width * pixel_height);
   }
 
   uint32_t get_resolution_w() const override { return resolution_w; }
