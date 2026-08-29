@@ -1,5 +1,7 @@
 #include "image.h"
 #include "util/utils.h"
+#include <cstdint>
+#include <filesystem>
 
 #define STBI_NO_TGA
 #define STBI_NO_PSD
@@ -16,13 +18,22 @@ constexpr float UINT8_INV = 1. / 255;
 
 std::optional<std::vector<TexColor3f>>
 load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
+  std::filesystem::path project_dir = ".";
+  std::string filepath;
+  for (const auto &entry :
+       std::filesystem::recursive_directory_iterator(project_dir)) {
+    if (entry.is_regular_file() && entry.path().filename() == filename) {
+      filepath = entry.path().string<char>();
+    }
+  }
+
   int channels, w_, h_;
 
-  if (stbi_is_hdr(filename.c_str())) {
-    float *data = stbi_loadf(filename.c_str(), &w_, &h_, &channels, RGB_CH);
+  if (stbi_is_hdr(filepath.c_str())) {
+    float *data = stbi_loadf(filepath.c_str(), &w_, &h_, &channels, RGB_CH);
     if (!data || w_ > MAX_WIDTH_HEIGHT || h_ > MAX_WIDTH_HEIGHT || w_ < 0 ||
         h_ < 0) {
-      std::cerr << "failed to load " << filename << std::endl;
+      std::cerr << "failed to load " << filepath << std::endl;
       return std::nullopt;
     }
 
@@ -35,15 +46,16 @@ load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
       pixels[i] = TexColor3f(data[3 * i], data[3 * i + 1], data[3 * i + 2]);
     }
 
+    std::cout << "loaded: " << filepath << std::endl;
     stbi_image_free(data);
     return pixels;
   } else {
     // png, jpeg
     unsigned char *data =
-        stbi_load(filename.c_str(), &w_, &h_, &channels, RGB_CH);
+        stbi_load(filepath.c_str(), &w_, &h_, &channels, RGB_CH);
     if (!data || w_ > MAX_WIDTH_HEIGHT || h_ > MAX_WIDTH_HEIGHT || w_ < 0 ||
         h_ < 0) {
-      std::cerr << "failed to load " << filename << std::endl;
+      std::cerr << "failed to load " << filepath << std::endl;
       return std::nullopt;
     }
 
@@ -59,7 +71,18 @@ load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
                   UINT8_INV;
     }
 
+    std::cout << "loaded: " << filepath << std::endl;
     stbi_image_free(data);
     return pixels;
+  }
+}
+
+void test_load_image(const std::string &filename) {
+  uint32_t width, height;
+  auto pixels = load_image(filename, &width, &height);
+
+  if (pixels.has_value()) {
+    std::cout << "width: " << width << ", height: " << height << std::endl;
+    pixels.value()[0].display();
   }
 }

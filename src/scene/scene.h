@@ -8,6 +8,7 @@
 #include "util/random.h"
 #include "util/utils.h"
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -30,7 +31,7 @@ struct Scene {
 
   void load_mtl(const auto &material, Primitive *prim);
 
-  void construct_bvh() {
+  inline void construct_bvh() {
     std::cout << primitives.size() << " primitives" << std::endl;
     bvh = BVH(primitives);
   }
@@ -43,8 +44,7 @@ struct Scene {
     return record->id != -1;
   }
 
-  bool intersect(Ray &ray, HitRecord *record,
-                 const uint32_t node_id = 0) const {
+  bool intersect(Ray &ray, HitRecord *record, const uint32_t node_id) const {
     if (bvh.tree[node_id].left & 1) {
       primitives[bvh.tree[node_id].left >> 1].hit(ray, record);
     } else if (bvh.tree[node_id].bbox.hit(ray, record)) {
@@ -56,7 +56,15 @@ struct Scene {
     return record->id != -1;
   }
 
-  int32_t sample_light_uniform(Random *rnd) const {
+  inline bool intersect(Ray &ray, HitRecord *record) const {
+    if (bvh.tree.empty()) {
+      return false;
+    }
+
+    return intersect(ray, record, 0);
+  }
+
+  inline int32_t sample_light_uniform(Random *rnd) const {
     if (lights.empty()) {
       return -1;
     }
@@ -65,8 +73,25 @@ struct Scene {
     return lights[sampled];
   }
 
-  double pdf_sample_light_uniform() const {
+  inline double pdf_sample_light_uniform() const {
     return lights.size() == 0 ? INF : 1. / (double)lights.size();
+  }
+
+  Vec2 get_skysphere_uv(const Vec3 &dir) const {
+    double cos_theta = dir.y;
+    double sin_theta = sqrt(1 - cos_theta * cos_theta);
+    double v = acos(cos_theta) * PI_INV;
+
+    if (sin_theta < EPS) {
+      return Vec2(0, clamp01(v));
+    }
+
+    double sin_phi = dir.x / sin_theta;
+    double cos_phi = dir.z / sin_theta;
+    double u = sin_phi > 0. ? 1. - acos(cos_phi) * PI_INV * 0.5
+                            : acos(cos_phi) * PI_INV * 0.5;
+
+    return Vec2(clamp01(u), clamp01(v));
   }
 
 private:

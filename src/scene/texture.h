@@ -36,15 +36,17 @@ public:
 class ImageTexture : public Texture {
 public:
   std::string filename;
-  std::vector<Color> pixels;
+  std::vector<TexColor3f> pixels;
   uint32_t width, height;
 
-  ImageTexture(const std::string &name, const std::vector<Color> &px,
+  ImageTexture(const std::string &name, const std::vector<TexColor3f> &px,
                const uint32_t width, const uint32_t height)
       : filename(name), pixels(px), width(width), height(height) {}
 
   Color get_color(const Vec2 &uv) const override {
-    uint32_t idx = width * uv.v + uv.u;
-    return pixels[idx];
+    uint32_t w = uv.u * width;
+    uint32_t h = uv.v * height;
+    uint64_t idx = static_cast<uint64_t>(width * h + w);
+    return pixels[idx].to_color();
   }
 };

@@ -25,8 +25,8 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
   for (uint32_t depth = 0;; depth++) {
     record.reset();
     if (!scene->intersect(now_ray, &record)) {
-      // calculate uv
-      value = value + scene->background->get_color(Vec2()) * (throughput / pdf);
+      Vec2 uv = scene->get_skysphere_uv(now_ray.dir);
+      value = value + scene->background->get_color(uv) * (throughput / pdf);
       break;
     }
 
@@ -66,8 +66,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
   for (uint32_t depth = 0;; depth++) {
     record.reset();
     if (!scene->intersect(now_ray, &record)) {
-      // calculate uv
-      value = value + scene->background->get_color(Vec2()) * (throughput / pdf);
+      Vec2 uv = scene->get_skysphere_uv(now_ray.dir);
+      value = value + scene->background->get_color(uv) * (throughput / pdf);
       break;
     }
 

@@ -86,14 +86,22 @@ void Renderer::set_camera(ObjectNode &node) {
 void Renderer::set_scene(ObjectNode &node) {
   ObjectNode scene_node = node.search_key<ObjectNode>("scene");
   std::string background_type =
-      scene_node.search_key_safe<std::string>("background-type", "colid");
+      scene_node.search_key_safe<std::string>("background-type", "solid");
   std::unique_ptr<Texture> background;
 
-  if (background_type == "solid") {
-    Color bcolor =
-        vector_to_vec3(scene_node.search_key_safe<std::vector<double>>(
-            "background", {0, 0, 0}));
-    background = std::make_unique<SolidColor>(bcolor);
+  if (background_type == "image") {
+    // image texture
+    std::string filename =
+        scene_node.search_key_safe<std::string>("background", "");
+    uint32_t width, height;
+    auto pixels = load_image(filename, &width, &height);
+
+    if (pixels.has_value()) {
+      background = std::make_unique<ImageTexture>(filename, pixels.value(),
+                                                  width, height);
+    } else {
+      background = std::make_unique<SolidColor>(Color());
+    }
   } else if (background_type == "hgrad") {
     Color bottom_color =
         vector_to_vec3(scene_node.search_key_safe<std::vector<double>>(
@@ -103,7 +111,11 @@ void Renderer::set_scene(ObjectNode &node) {
             "top-color", {0, 0, 0}));
     background = std::make_unique<HGradationColor>(bottom_color, top_color);
   } else {
-    // load texture
+    // solid color
+    Color bcolor =
+        vector_to_vec3(scene_node.search_key_safe<std::vector<double>>(
+            "background", {0, 0, 0}));
+    background = std::make_unique<SolidColor>(bcolor);
   }
 
   scene = std::make_unique<Scene>(background);
