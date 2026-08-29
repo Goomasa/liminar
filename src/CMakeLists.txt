@@ -8,6 +8,7 @@ set(exe_file
     scene/primitive.cpp
     config/lexer.cpp
     config/parser.cpp
+    util/image.cpp
 )
 
 find_package(OpenMP REQUIRED)

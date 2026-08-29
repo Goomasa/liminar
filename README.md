@@ -3,6 +3,7 @@
 ## Dependencies
 - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader.git)
 - [SDL](https://github.com/libsdl-org/SDL)
+- [stb](https://github.com/nothings/stb/tree/master)
 - OpenMP
 
 ## Build

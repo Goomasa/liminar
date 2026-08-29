@@ -135,3 +135,47 @@ inline double lerp1d(const double a, const double b, const double r) {
   // a <--- r ---> ? <--- 1-r ---> b
   return (1 - r) * a + r * b;
 }
+
+struct TexColor3f {
+  float x, y, z;
+
+  TexColor3f() : x(0), y(0), z(0) {}
+
+  TexColor3f(const float f) : x(f), y(f), z(f) {}
+
+  TexColor3f(const float x, const float y, const float z) : x(x), y(y), z(z) {}
+
+  inline TexColor3f operator+(const TexColor3f &t) const {
+    return TexColor3f(x + t.x, y + t.y, z + t.z);
+  }
+
+  inline TexColor3f operator-(const TexColor3f &t) const {
+    return TexColor3f(x - t.x, y - t.y, z - t.z);
+  }
+
+  inline TexColor3f operator*(const float f) const {
+    return TexColor3f(x * f, y * f, z * f);
+  }
+
+  inline TexColor3f operator/(const float f) const {
+    return TexColor3f(x / f, y / f, z / f);
+  }
+
+  inline TexColor3f operator*(const TexColor3f &t) const {
+    return TexColor3f(x * t.x, y * t.y, z * t.z);
+  }
+
+  inline TexColor3f operator/(const TexColor3f &t) const {
+    return TexColor3f(x / t.x, y / t.y, z / t.z);
+  }
+
+  inline Vec3 to_color() const { return Vec3((double)x, (double)y, (double)z); }
+
+  inline void display() const {
+    std::cout << x << ", " << y << ", " << z << std::endl;
+  }
+};
+
+inline TexColor3f operator*(const float d, const TexColor3f &t) {
+  return t * d;
+}

@@ -1,8 +1,10 @@
 #pragma once
 
 #include "util/utils.h"
-#include <cstdio>
-#include <stdio.h>
+#include <fstream>
+#include <optional>
+#include <string>
+#include <vector>
 
 inline bool is_valid(const Vec3 &v) { return !v.is_nan() && (v.min() >= 0.); }
 
@@ -13,29 +15,21 @@ inline int gamma_(const double x) {
 inline void save_ppm(const std::string &filename,
                      const std::vector<Color> &image, const uint32_t width,
                      const uint32_t height) {
-  FILE *f;
-
-#ifdef _MSC_VER
-  auto error = fopen_s(&f, filename.c_str(), "wb");
-  if (error != 0) {
-    std::cout << "failed to write " << filename << std::endl;
-    std::exit(1);
+  std::ofstream file(filename);
+  if (!file.is_open()) {
+    std::cerr << "failed to open file: " << filename << std::endl;
+    exit(1);
   }
-#else
-  f = fopen(filename.c_str(), "wb");
-  if (!f) {
-    std::cout << "failed to write " << filename << std::endl;
-    std::exit(1);
-  }
-#endif
 
-  fprintf(f, "P3\n%d %d\n%d\n", width, height, 256);
+  file << "P3\n" << width << " " << height << "\n" << 256 << std::endl;
 
   for (int i = 0; i < width * height; i++) {
-    fprintf(f, "%d %d %d ", gamma_(image[i].x), gamma_(image[i].y),
-            gamma_(image[i].z));
+    file << gamma_(image[i].x) << " " << gamma_(image[i].y) << " "
+         << gamma_(image[i].z) << std::endl;
   }
-  fclose(f);
 
-  std::cout << "saved" << std::endl;
+  file.close();
 }
+
+std::optional<std::vector<TexColor3f>>
+load_image(const std::string &filename, uint32_t *width, uint32_t *height);

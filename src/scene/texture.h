@@ -7,7 +7,7 @@
 
 class Texture {
 public:
-  ~Texture() = default;
+  virtual ~Texture() = default;
   virtual Color get_color(const Vec2 &uv) const = 0;
 };
 
