@@ -2,10 +2,10 @@
   "scene":{
     "background-type":"hgrad",
     "background":"brown_photostudio.hdr",
-    "bottom-color":[2,2,2],
-    "top-color":[0.1,0.1,0.1],
+    "bottom-color":[1,1,1],
+    "top-color":[0,0,0],
     "models":{
-      "path":"models/empty",
+      "path":"models/sample1",
       "scale":1.0,
       "translation":[0,0,0]
     }
@@ -16,10 +16,10 @@
     "pinhole":{
       "resolution-w":400,
       "resolution-h":400,
-      "sensor-center":[0,25,50],
+      "sensor-center":[0,-30,150],
       "sensor-width":20,
-      "sensor-dir":[0,0,-1],
-      "sensor-to-hole":10,
+      "sensor-dir":[0,0.1,-1],
+      "sensor-to-hole":30,
       "w-scale":10
     },
 
@@ -39,7 +39,7 @@
   "renderer":{
     "supersamples":8,
     "samples-per-superpixel":4,
-    "threads-num":10,
+    "threads-num":8,
     "is-test":false,
     "gui":false
   }

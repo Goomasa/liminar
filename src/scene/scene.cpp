@@ -124,12 +124,12 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   return;
 }
 
-void Scene::set_primitive() {
+void Scene::set_test_primitive() {
   // std::unique_ptr<Shape> sphere =
   //     std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(0, 25, 0), 15);
-  std::unique_ptr<Bxdf> bxdf = std::make_unique<Mirror>(Color(1.));
+  std::unique_ptr<Bxdf> bxdf = std::make_unique<MicroBtdf>(Color(1.), 1.5, 0.3);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   primitives.emplace_back(std::move(prim));
   shapes.emplace_back(std::move(sphere));

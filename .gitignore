@@ -5,4 +5,5 @@ build/
 *.ppm
 models/*
 !models/test-box/
+!models/sample1/
 assets/

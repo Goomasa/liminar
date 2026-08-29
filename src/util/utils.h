@@ -100,7 +100,9 @@ struct Vec3 {
 
   inline double min() const { return fmin(x, fmin(y, z)); }
 
-  inline bool is_nan() const { return isnan(x) || isnan(y) || isnan(z); }
+  inline bool is_nan() const {
+    return std::isnan(x) || std::isnan(y) || std::isnan(z);
+  }
 
   inline void set(const double d, const uint8_t i) { (&x)[i] = d; }
 };

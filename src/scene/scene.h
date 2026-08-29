@@ -23,7 +23,7 @@ struct Scene {
 
   Scene(std::unique_ptr<Texture> &background)
       : background(std::move(background)) {
-    set_primitive();
+    set_test_primitive();
   }
 
   void load_obj(const std::string &filename, const double scale = 1.,
@@ -95,5 +95,5 @@ struct Scene {
   }
 
 private:
-  void set_primitive();
+  void set_test_primitive();
 };
