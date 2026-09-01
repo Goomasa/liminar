@@ -33,6 +33,13 @@ public:
   Vertex p, q, r;
   Vec3 geometry_normal;
 
+  Triangle(const Vec3 &vp, const Vec3 &vq, const Vec3 &vr) {
+    geometry_normal = normalize(cross(vq - vp, vr - vp));
+    p = Vertex(vp, geometry_normal);
+    q = Vertex(vq, geometry_normal);
+    r = Vertex(vr, geometry_normal);
+  }
+
   Triangle(const Vertex &p, const Vertex &q, const Vertex &r)
       : p(p), q(q), r(r) {
     Vec3 pq = q.position - p.position;

@@ -8,10 +8,10 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tinyobjloader/tiny_obj_loader.h"
 
-void Scene::load_obj(const std::string &filename, const double scale,
-                     const Vec3 &tr) {
+void Scene::load_obj(const std::string &filename, const std::string &dir_path,
+                     const double scale, const Vec3 &tr) {
   tinyobj::ObjReaderConfig config;
-  config.mtl_search_path = "";
+  config.mtl_search_path = dir_path;
   config.triangulate = true;
 
   tinyobj::ObjReader reader;
@@ -129,7 +129,7 @@ void Scene::set_test_primitive() {
   //     std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(0, 25, 0), 15);
-  std::unique_ptr<Bxdf> bxdf = std::make_unique<MicroBtdf>(Color(1.), 1.5, 0.3);
+  std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   primitives.emplace_back(std::move(prim));
   shapes.emplace_back(std::move(sphere));
@@ -142,4 +142,15 @@ void Scene::set_test_primitive() {
   // primitives.emplace_back(std::move(prim2));
   // shapes.emplace_back(std::move(cylinder));
   // bxdfs.emplace_back(std::move(bxdf2));
+}
+
+void Scene::set_sample_scene1() {
+  Random rnd(1);
+  for (uint32_t i = 0; i <= 20; i++) {
+    for (uint32_t j = 0; j <= 20; j++) {
+      Vec3 tr = Vec3((double)i * 20 - 200, -65 + rnd.gen() * 10,
+                     (double)j * 20 - 200);
+      load_obj("models/cube.obj", "models/", 10, tr);
+    }
+  }
 }

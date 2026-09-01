@@ -6,9 +6,6 @@
 #include "util/random.h"
 #include "util/utils.h"
 
-constexpr uint32_t DEPTH = 5;
-constexpr uint32_t MAX_DEPTH = 10;
-
 class Integrator {
 public:
   Integrator() : value(Color()) {}

@@ -5,6 +5,9 @@
 #include <cmath>
 #include <cstdint>
 
+constexpr uint32_t DEPTH = 5;
+constexpr uint32_t MAX_DEPTH = 10;
+
 inline double roullete(const uint32_t depth) {
   if (depth < DEPTH) {
     return 1.0;

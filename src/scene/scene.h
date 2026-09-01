@@ -26,8 +26,8 @@ struct Scene {
     set_test_primitive();
   }
 
-  void load_obj(const std::string &filename, const double scale = 1.,
-                const Vec3 &tr = Vec3());
+  void load_obj(const std::string &filename, const std::string &dir_path,
+                const double scale = 1., const Vec3 &tr = Vec3());
 
   void load_mtl(const auto &material, Primitive *prim);
 
@@ -96,4 +96,6 @@ struct Scene {
 
 private:
   void set_test_primitive();
+
+  void set_sample_scene1();
 };

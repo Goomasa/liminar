@@ -132,7 +132,7 @@ void Renderer::set_scene(ObjectNode &node) {
   try {
     for (const auto &entry : std::filesystem::recursive_directory_iterator(p)) {
       if (entry.is_regular_file() && entry.path().extension() == ".obj") {
-        scene->load_obj(entry.path().string<char>(), scale, tr);
+        scene->load_obj(entry.path().string<char>(), models_dir, scale, tr);
       }
     }
   } catch (const std::filesystem::filesystem_error err) {
@@ -292,13 +292,14 @@ void Renderer::render_with_gui() const {
 
 #pragma omp parallel for schedule(dynamic, 1)
     for (int32_t v = 0; v < resolution_h; v++) {
+      Integrator integrator = Integrator();
+
       for (uint32_t u = 0; u < resolution_w; u++) {
         uint32_t idx = pixel_num - resolution_w * v - u - 1;
-        Random rnd = Random(u * v + samples_count);
+        Random rnd = Random(u * v * samples_count);
 
         for (uint32_t sv = 0; sv < supersamples; sv++) {
           for (uint32_t su = 0; su < supersamples; su++) {
-            Integrator integrator = Integrator();
             Point3 pixel_pos =
                 camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
             Ray ray = camera->get_first_ray(&rnd, pixel_pos);

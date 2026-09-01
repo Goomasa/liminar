@@ -1,9 +1,7 @@
 {
   "scene":{
-    "background-type":"hgrad",
-    "background":"brown_photostudio.hdr",
-    "bottom-color":[1,1,1],
-    "top-color":[0,0,0],
+    "background-type":"solid",
+    "background":[0.01,0.01,0.01],
     "models":{
       "path":"models/sample1",
       "scale":1.0,
@@ -14,8 +12,8 @@
   "camera":{
     "model":"pinhole",
     "pinhole":{
-      "resolution-w":400,
-      "resolution-h":400,
+      "resolution-w":800,
+      "resolution-h":800,
       "sensor-center":[0,-30,150],
       "sensor-width":20,
       "sensor-dir":[0,0.1,-1],
@@ -37,9 +35,9 @@
   },
 
   "renderer":{
-    "supersamples":8,
-    "samples-per-superpixel":4,
-    "threads-num":8,
+    "supersamples":16,
+    "samples-per-superpixel":8,
+    "threads-num":10,
     "is-test":false,
     "gui":false
   }
