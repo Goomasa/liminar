@@ -8,10 +8,12 @@
 struct BVHNode {
   AABB bbox;
   uint32_t left; // the first bit is set -> leaf
+  uint32_t right;
 
-  BVHNode() : bbox(AABB()), left(-1) {}
+  BVHNode() : bbox(AABB()), left(-1), right(-1) {}
 
-  BVHNode(const AABB &bbox, const int32_t left) : bbox(bbox), left(left) {}
+  BVHNode(const AABB &bbox, const uint32_t left, uint32_t right)
+      : bbox(bbox), left(left), right(right) {}
 };
 
 class BVH {
