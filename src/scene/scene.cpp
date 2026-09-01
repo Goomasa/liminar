@@ -129,7 +129,8 @@ void Scene::set_test_primitive() {
   //     std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(0, 25, 0), 15);
-  std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
+  std::unique_ptr<Bxdf> bxdf =
+      std::make_unique<MixtureBrdf>(Color(1.), 0.1, 0.2);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   primitives.emplace_back(std::move(prim));
   shapes.emplace_back(std::move(sphere));

@@ -4,20 +4,7 @@
 
 Vec3 Lambertian::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
                         Random *rnd) const {
-  Vec3 w = normal, u, v;
-  if (fabs(w.x) > EPS) {
-    u = normalize(cross(Vec3(0, 1, 0), w));
-  } else {
-    u = normalize(cross(Vec3(1, 0, 0), w));
-  }
-  v = cross(w, u);
-
-  double phi = 2 * PI * rnd->gen();
-  double sin_theta2 = rnd->gen();
-  double sin_theta = sqrt(sin_theta2);
-
-  return normalize(u * sin_theta * cos(phi) + v * sin_theta * sin(phi) +
-                   w * sqrt(1 - sin_theta2));
+  return sample_cosine_hemisphere(wo, normal, rnd);
 }
 
 double Lambertian::sampling_pdf(const Vec3 &wo, const Vec3 &wi,
@@ -267,4 +254,35 @@ Vec3 MicroBrdfAniso::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
       return wi;
     }
   }
+}
+
+Color MixtureBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+                        const bool into) const {
+  Vec3 wm = normalize(wi + wo);
+  double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
+  Color fresnel = fresnel_gaussian(fs0(), wi, wm);
+  Color f_spec = fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+
+  Color f_diff = base_color * PI_INV;
+
+  return (1. - metalic) * f_diff + f_spec;
+}
+
+Vec3 MixtureBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
+                         Random *rnd) const {
+  if (sample_diffuse(rnd)) {
+    return sample_cosine_hemisphere(wo, normal, rnd);
+  } else {
+    return sample_vndf(wo, normal, rnd);
+  }
+}
+
+double MixtureBrdf::sampling_pdf(const Vec3 &wo, const Vec3 &wi,
+                                 const Vec3 &normal, const bool into) const {
+  Vec3 wm = normalize(wi + wo);
+  double pdf_spec =
+      ggx_g1(wo, normal) * ggx_d(wm, normal) * 0.25 / fabs(dot(wo, normal));
+  double pdf_diff = fmax(dot(wi, normal), EPS) * PI_INV;
+
+  return diffuse_prob * pdf_diff + (1. - diffuse_prob) * pdf_spec;
 }
