@@ -31,10 +31,7 @@ struct Scene {
 
   void load_mtl(const auto &material, Primitive *prim);
 
-  inline void construct_bvh() {
-    std::cout << primitives.size() << " primitives" << std::endl;
-    bvh = BVH(primitives);
-  }
+  inline void construct_bvh() { bvh = BVH(primitives); }
 
   bool test_intersect(Ray &ray, HitRecord *record) const {
     for (const Primitive &prim : primitives) {
@@ -88,6 +85,15 @@ struct Scene {
   }
 
 private:
+  inline std::unique_ptr<Bxdf> *search_bxdf(const uint64_t key) {
+    for (auto &bxdf : bxdfs) {
+      if (bxdf->id == key) {
+        return &bxdf;
+      }
+    }
+    return nullptr;
+  }
+
   void set_test_primitive();
 
   void set_sample_scene1();

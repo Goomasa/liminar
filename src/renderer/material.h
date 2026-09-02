@@ -7,6 +7,8 @@
 
 class Bxdf {
 public:
+  uint64_t id;
+
   virtual ~Bxdf() = default;
   virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
                      const bool into) const = 0;

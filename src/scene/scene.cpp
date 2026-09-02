@@ -2,11 +2,17 @@
 #include "renderer/material.h"
 #include "scene/primitive.h"
 #include "util/utils.h"
+#include <functional>
 #include <memory>
+#include <string>
 
 #define TINYOBJLOADER_DISABLE_FAST_FLOAT
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tinyobjloader/tiny_obj_loader.h"
+
+inline Color load_mtl_emission(const auto &material) {
+  return Vec3(material.emission[0], material.emission[1], material.emission[2]);
+}
 
 void Scene::load_obj(const std::string &filename, const std::string &dir_path,
                      const double scale, const Vec3 &tr) {
@@ -58,13 +64,28 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
       Primitive prim = Primitive(shape.get(), primitives.size());
       shapes.emplace_back(std::move(shape));
 
-      int32_t material_id = obj_shape.mesh.material_ids[f];
-      if (material_id < 0) {
-        std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
-        prim.bxdf = bxdf.get();
-        bxdfs.emplace_back(std::move(bxdf));
+      int32_t mtl_idx = obj_shape.mesh.material_ids[f];
+      uint64_t hashed_bxdf_id =
+          std::hash<std::string>()(filename + std::to_string(mtl_idx));
+      auto correspoing_bxdf = search_bxdf(hashed_bxdf_id);
+
+      if (correspoing_bxdf) {
+        prim.bxdf = correspoing_bxdf->get();
+        Color emission =
+            mtl_idx < 0 ? Color() : load_mtl_emission(obj_materials[mtl_idx]);
+        if (emission.max() > EPS) {
+          prim.emission = emission;
+        }
       } else {
-        load_mtl(obj_materials[material_id], &prim);
+        if (mtl_idx < 0) {
+          std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
+          prim.bxdf = bxdf.get();
+          bxdfs.emplace_back(std::move(bxdf));
+        } else {
+          load_mtl(obj_materials[mtl_idx], &prim);
+        }
+
+        prim.bxdf->id = hashed_bxdf_id;
       }
 
       if (prim.is_light()) {
@@ -88,7 +109,7 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
 
   std::unique_ptr<Bxdf> bxdf;
 
-  if (ke.max() > 0) {
+  if (ke.max() > EPS) {
     prim->emission = ke;
     bxdf = std::make_unique<Lambertian>(kd);
     prim->bxdf = bxdf.get();

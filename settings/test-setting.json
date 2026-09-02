@@ -3,9 +3,9 @@
     "background-type":"image",
     "background":"brown_photostudio.hdr",
     "models":{
-      "path":"models/buddha",
-      "scale":50.0,
-      "translation":[0,15,0]
+      "path":"models/test-box",
+      "scale":1.0,
+      "translation":[0,0,0]
     }
   },
 
@@ -35,8 +35,8 @@
   },
 
   "renderer":{
-    "supersamples":3,
-    "samples-per-superpixel":3,
+    "supersamples":8,
+    "samples-per-superpixel":4,
     "threads-num":10,
     "is-test":false,
     "gui":false
