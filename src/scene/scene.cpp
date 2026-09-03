@@ -174,9 +174,9 @@ void Scene::set_test_primitive() {
   std::unique_ptr<Bxdf> bxdf =
       std::make_unique<MixtureBrdf>(Color(1.), 0.1, 0.2);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
-  // primitives.emplace_back(std::move(prim));
-  // shapes.emplace_back(std::move(sphere));
-  // bxdfs.emplace_back(std::move(bxdf));
+  primitives.emplace_back(std::move(prim));
+  shapes.emplace_back(std::move(sphere));
+  bxdfs.emplace_back(std::move(bxdf));
 
   std::unique_ptr<Shape> cylinder =
       std::make_unique<Cylinder>(Point3(12, 7, -12), Vec3(-0.3, 0, -1), 7, 10);

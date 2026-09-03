@@ -7,3 +7,6 @@ models/*
 !models/test-box/
 !models/sample1/
 assets/
+settings/*
+!settings/test-setting.json
+!settings/sample-scene1.json

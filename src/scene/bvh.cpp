@@ -75,7 +75,7 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
     uint32_t partition = 1;
     uint8_t best_axis = 0;
-    double min_area = INF;
+    double min_cost = INF;
     std::vector<double> area_left(prims_box_size - 1);
 
     for (uint8_t axis = 0; axis < 3; axis++) {
@@ -89,10 +89,10 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
       for (uint32_t i = prims_box_size - 1; i >= 1; i--) {
         right_bbox = right_bbox + prims_in_box->at(i).shape->get_bbox();
-        double total_area = area_left[i - 1] + right_bbox.get_area();
-        if (abs((int)(i - prims_box_size / 2)) <= prims_box_size / 4 &&
-            total_area < min_area) {
-          min_area = total_area;
+        double cost =
+            area_left[i - 1] * i + right_bbox.get_area() * (prims_box_size - i);
+        if (cost < min_cost) {
+          min_cost = cost;
           partition = i;
           best_axis = axis;
         }

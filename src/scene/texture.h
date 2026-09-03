@@ -44,8 +44,8 @@ public:
       : filename(name), pixels(px), width(width), height(height) {}
 
   Color get_color(const Vec2 &uv) const override {
-    uint32_t w = uv.u * width;
-    uint32_t h = uv.v * height;
+    uint32_t w = uv.u == 1. ? width - 1 : static_cast<uint32_t>(uv.u * width);
+    uint32_t h = uv.v == 1 ? height - 1 : static_cast<uint32_t>(uv.v * height);
     uint64_t idx = static_cast<uint64_t>(width * h + w);
     return pixels[idx].to_color();
   }

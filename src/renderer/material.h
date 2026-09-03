@@ -332,7 +332,7 @@ private:
   double ggx_lambda(const Vec3 &w, const Vec3 &n) const {
     double cos_theta = dot(w, n);
     double sin_theta2 = 1 - cos_theta * cos_theta;
-    double tan_theta2 = 1. / cos_theta * cos_theta - 1;
+    double tan_theta2 = 1. / (cos_theta * cos_theta) - 1;
 
     Vec3 z = n;
     Vec3 x = fabs(z.x) > EPS ? normalize(cross(Vec3(0, 1, 0), z))

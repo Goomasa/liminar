@@ -167,7 +167,7 @@ private:
 
   Point3 sample_lens(Random *rnd) const {
     double theta = 2. * PI * rnd->gen();
-    double r = rnd->gen() * lens_radius;
+    double r = sqrt(rnd->gen()) * lens_radius;
     return lens_center + sensor_u * r * cos(theta) + sensor_v * r * sin(theta);
   }
 };

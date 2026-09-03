@@ -125,7 +125,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
         Color tmp_throughput =
             throughput *
             prim->bxdf->eval(wo, to_light_norm, orienting_normal, into) *
-            fmax(dot(to_light_norm, orienting_normal), 0.);
+            fabs(dot(to_light_norm, orienting_normal));
         value = value + light->emission * (tmp_throughput * mis_weight /
                                            (pdf * pdf_sample_light));
       }

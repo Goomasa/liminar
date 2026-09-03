@@ -21,10 +21,6 @@ public:
     set_scene(node);
     set_renderer(node);
 
-    std::cout << "size of primitives: " << scene->primitives.size()
-              << std::endl;
-    std::cout << "size of bxdfs: " << scene->bxdfs.size() << std::endl;
-
     scene->construct_bvh();
 
     std::chrono::system_clock::time_point start, end;

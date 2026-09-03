@@ -3,7 +3,7 @@
     "background-type":"image",
     "background":"brown_photostudio.hdr",
     "models":{
-      "path":"models/test-box",
+      "path":"models/empty",
       "scale":1.0,
       "translation":[0,0,0]
     }

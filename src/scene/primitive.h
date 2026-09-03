@@ -74,7 +74,7 @@ public:
   Point3 sample_surface(Random *rnd, double *pdf) const override;
 
   Vec3 get_normal(const Point3 &pos) const override {
-    return tlerp<Vec3>(p.normal, q.normal, r.normal, pos);
+    return normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, pos));
   }
 
 private:

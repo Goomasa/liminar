@@ -44,9 +44,9 @@ struct Scene {
   bool intersect(Ray &ray, HitRecord *record, const uint32_t node_id) const;
 
   inline bool intersect(Ray &ray, HitRecord *record) const {
-    if (bvh.tree.empty()) {
+    if (primitives.empty()) {
       return false;
-    } else if (bvh.tree.size() == 1) {
+    } else if (primitives.size() == 1) {
       primitives[0].hit(ray, record);
       return record->id != -1;
     }

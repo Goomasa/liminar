@@ -139,6 +139,13 @@ void Renderer::set_scene(ObjectNode &node) {
     std::cerr << "filesystem error: " << err.what() << std::endl;
     return;
   }
+
+  scene->primitives.shrink_to_fit();
+  scene->bxdfs.shrink_to_fit();
+  scene->shapes.shrink_to_fit();
+
+  std::cout << "size of primitives: " << scene->primitives.size() << std::endl;
+  std::cout << "size of bxdfs: " << scene->bxdfs.size() << std::endl;
 }
 
 void Renderer::render() const {
@@ -206,7 +213,7 @@ void Renderer::test_render() const {
           if (scene->intersect(ray, &record)) {
             accumlated = accumlated + record.normal / 2. + Color(0.5);
           } else {
-            accumlated = accumlated + Color();
+            accumlated = accumlated + Color(1.);
           }
         }
       }

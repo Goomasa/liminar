@@ -273,7 +273,8 @@ Vec3 MixtureBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
   if (sample_diffuse(rnd)) {
     return sample_cosine_hemisphere(wo, normal, rnd);
   } else {
-    return sample_vndf(wo, normal, rnd);
+    Vec3 wm = sample_vndf(wo, normal, rnd);
+    return reflection_dir(wo, wm);
   }
 }
 

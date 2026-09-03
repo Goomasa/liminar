@@ -30,7 +30,8 @@ bool Triangle::hit(Ray &ray, HitRecord *record) const {
 
   record->distance = t;
   record->hitpoint = pos;
-  record->normal = tlerp<Vec3>(p.normal, q.normal, r.normal, Vec2(u, v));
+  record->normal =
+      normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, Vec2(u, v)));
 
   return true;
 }

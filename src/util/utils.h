@@ -171,6 +171,14 @@ struct TexColor3f {
     return TexColor3f(x / t.x, y / t.y, z / t.z);
   }
 
+  inline float len2() const { return x * x + y * y + z * z; }
+
+  inline float len() const { return std::sqrt(this->len2()); }
+
+  inline float max() const { return fmax(x, fmax(y, z)); }
+
+  inline float min() const { return fmin(x, fmin(y, z)); }
+
   inline Vec3 to_color() const { return Vec3((double)x, (double)y, (double)z); }
 
   inline void display() const {
