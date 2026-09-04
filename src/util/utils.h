@@ -109,6 +109,10 @@ struct Vec3 {
 
 inline Vec3 operator*(const double d, const Vec3 &v) { return v * d; }
 
+inline bool operator==(const Vec3 &v1, const Vec3 &v2) {
+  return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
+}
+
 inline Vec3 normalize(const Vec3 &v) { return v / (v.len()); }
 
 inline double dot(const Vec3 &v1, const Vec3 &v2) {

@@ -303,7 +303,7 @@ void Renderer::render_with_gui() const {
 
       for (uint32_t u = 0; u < resolution_w; u++) {
         uint32_t idx = pixel_num - resolution_w * v - u - 1;
-        Random rnd = Random(u * v * samples_count);
+        Random rnd = Random(u * v + samples_count);
 
         for (uint32_t sv = 0; sv < supersamples; sv++) {
           for (uint32_t su = 0; su < supersamples; su++) {
@@ -334,8 +334,9 @@ void Renderer::render_with_gui() const {
   }
 
   for (uint32_t i = 0; i < pixel_num; i++) {
-    image_buffer[i] = image_buffer[i] * 1. /
-                      (double)(supersamples * supersamples * samples_count);
+    image_buffer[i] =
+        image_buffer[i] * 1. /
+        (double)(supersamples * supersamples * (samples_count - 1));
   }
   save_ppm("render.ppm", image_buffer, resolution_w, resolution_h);
 

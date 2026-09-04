@@ -53,9 +53,15 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
         const double ny = (double)obj_attrib.normals[3 * idx.normal_index + 1];
         const double nz = (double)obj_attrib.normals[3 * idx.normal_index + 2];
 
-        vertices[v] =
-            Vertex(Point3((double)vx, (double)vy, (double)vz) * scale + tr,
-                   Vec3(nx, ny, nz));
+        vertices[v] = Vertex(Point3(vx, vy, vz) * scale + tr, Vec3(nx, ny, nz));
+      }
+
+      offset += 3;
+
+      if (vertices[0].position == vertices[1].position ||
+          vertices[1].position == vertices[2].position ||
+          vertices[2].position == vertices[0].position) {
+        continue;
       }
 
       std::unique_ptr<Shape> shape =
@@ -93,8 +99,6 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
       }
 
       primitives.emplace_back(std::move(prim));
-
-      offset += 3;
     }
   }
   std::cout << "loaded: " << filename << std::endl;
@@ -150,13 +154,13 @@ bool Scene::intersect(Ray &ray, HitRecord *record,
   if (bvh.tree[node_id].bbox.hit(ray, record)) {
     uint32_t left = bvh.tree[node_id].left;
     uint32_t right = bvh.tree[node_id].right;
-    if (bvh.tree[node_id].left & 1) {
+    if (left & 1) {
       primitives[left >> 1].hit(ray, record);
     } else {
       intersect(ray, record, left >> 1);
     }
 
-    if (bvh.tree[node_id].right & 1) {
+    if (right & 1) {
       primitives[right >> 1].hit(ray, record);
     } else {
       intersect(ray, record, right >> 1);
@@ -174,9 +178,9 @@ void Scene::set_test_primitive() {
   std::unique_ptr<Bxdf> bxdf =
       std::make_unique<MixtureBrdf>(Color(1.), 0.1, 0.2);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
-  primitives.emplace_back(std::move(prim));
-  shapes.emplace_back(std::move(sphere));
-  bxdfs.emplace_back(std::move(bxdf));
+  // primitives.emplace_back(std::move(prim));
+  // shapes.emplace_back(std::move(sphere));
+  // bxdfs.emplace_back(std::move(bxdf));
 
   std::unique_ptr<Shape> cylinder =
       std::make_unique<Cylinder>(Point3(12, 7, -12), Vec3(-0.3, 0, -1), 7, 10);

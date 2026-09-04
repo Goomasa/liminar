@@ -59,6 +59,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
   }
 }
 
+/*
 void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
   Ray now_ray = ray, test_ray = Ray(Point3(), Vec3());
   HitRecord record = HitRecord(), test_record = HitRecord();
@@ -77,7 +78,6 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     Primitive *prim = &scene->primitives[record.id];
     if (prim->is_light() &&
         dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
-      // value = value + throughput * prim->emission / pdf;
       if (depth == 0) {
         value = prim->emission;
       }
@@ -158,6 +158,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 
           value = value + light->emission *
                               (tmp_throughput * mis_weight / (pdf * pdf_bxdf));
+          break;
         }
       }
     }
@@ -167,5 +168,98 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
                  fabs(dot(wi, orienting_normal));
     pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
+  }
+}
+*/
+
+void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
+  Ray now_ray = ray, test_ray = Ray(Point3(), Vec3());
+  HitRecord record = HitRecord(), test_record = HitRecord();
+  Color throughput = Color(1.);
+  double pdf = 1., prev_pdf_bxdf;
+
+  for (uint32_t depth = 0;; depth++) {
+    record.reset();
+    if (!scene->intersect(now_ray, &record)) {
+      Vec2 uv = scene->get_skysphere_uv(now_ray.dir);
+      value = value + scene->background->get_color(uv) * (throughput / pdf);
+      break;
+    }
+
+    Primitive *prim = &scene->primitives[record.id];
+    if (prim->is_light() &&
+        dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
+      if (depth == 0) {
+        value = prim->emission;
+        break;
+      }
+
+      Vec3 to_light = record.hitpoint - now_ray.org;
+      double pdf_sample_light =
+          scene->pdf_sample_light_uniform() *
+          prim->shape->pdf_sample_surface_area() * to_light.len2() /
+          dot(normalize(to_light),
+              -1. * prim->shape->get_normal(record.hitpoint));
+      double mis_weight =
+          prim->bxdf->is_specular()
+              ? 1.
+              : prev_pdf_bxdf / (pdf_sample_light + prev_pdf_bxdf);
+
+      value = value + prim->emission * mis_weight * (throughput / pdf);
+      break;
+    }
+
+    double roullete_prob = roullete(depth);
+    if (rnd->gen() > roullete_prob) {
+      break;
+    }
+    pdf *= roullete_prob;
+
+    Vec3 orienting_normal = dot(record.normal, now_ray.dir) < 0.
+                                ? record.normal
+                                : -1. * record.normal;
+    Vec3 wo = -1. * now_ray.dir;
+    bool into = dot(orienting_normal, record.normal) > 0.;
+
+    int32_t light_id = scene->sample_light_uniform(rnd);
+    if (!prim->bxdf->is_specular() && light_id >= 0) {
+      Primitive *light = &scene->primitives[light_id];
+      double pdf_sample_light, pdf_sample_surface_area, pdf_bxdf;
+      Point3 pos_on_light =
+          light->shape->sample_surface(rnd, &pdf_sample_surface_area);
+      Vec3 to_light = pos_on_light - record.hitpoint;
+      Vec3 to_light_norm = normalize(to_light);
+
+      pdf_bxdf =
+          prim->bxdf->sampling_pdf(wo, to_light_norm, orienting_normal, into);
+
+      test_record.reset(to_light.len() + 0.1);
+      test_ray = Ray(record.hitpoint, to_light_norm, record.id);
+
+      if (pdf_bxdf > 0. && scene->intersect(test_ray, &test_record) &&
+          test_record.id == light_id &&
+          dot(to_light_norm, light->shape->get_normal(pos_on_light)) <= 0.) {
+        pdf_sample_light =
+            scene->pdf_sample_light_uniform() * pdf_sample_surface_area *
+            to_light.len2() /
+            dot(to_light_norm, -1. * light->shape->get_normal(pos_on_light));
+
+        double mis_weight = pdf_sample_light / (pdf_sample_light + pdf_bxdf);
+
+        Color tmp_throughput =
+            throughput *
+            prim->bxdf->eval(wo, to_light_norm, orienting_normal, into) *
+            fabs(dot(to_light_norm, orienting_normal));
+        value = value + light->emission * (tmp_throughput * mis_weight /
+                                           (pdf * pdf_sample_light));
+      }
+    }
+
+    Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd);
+    now_ray = Ray(record.hitpoint, wi, record.id);
+    throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
+                 fabs(dot(wi, orienting_normal));
+    prev_pdf_bxdf = prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
+    pdf *= prev_pdf_bxdf;
   }
 }
