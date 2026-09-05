@@ -131,8 +131,13 @@ void Renderer::set_scene(ObjectNode &node) {
 
   try {
     for (const auto &entry : std::filesystem::recursive_directory_iterator(p)) {
-      if (entry.is_regular_file() && entry.path().extension() == ".obj") {
-        scene->load_obj(entry.path().string<char>(), models_dir, scale, tr);
+      if (entry.is_regular_file()) {
+        if (entry.path().extension() == ".obj") {
+          scene->load_obj(entry.path().string<char>(), models_dir, scale, tr);
+        } else if (entry.path().extension() == ".gltf" ||
+                   entry.path().extension() == ".glb") {
+          scene->load_gltf(entry.path().string<char>(), models_dir, scale, tr);
+        }
       }
     }
   } catch (const std::filesystem::filesystem_error err) {

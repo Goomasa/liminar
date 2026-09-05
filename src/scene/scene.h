@@ -31,6 +31,9 @@ struct Scene {
 
   void load_mtl(const auto &material, Primitive *prim);
 
+  void load_gltf(const std::string &filename, const std::string &dir_path,
+                 const double scale = 1., const Vec3 &tr = Vec3());
+
   inline void construct_bvh() { bvh = BVH(primitives); }
 
   bool test_intersect(Ray &ray, HitRecord *record) const {

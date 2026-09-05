@@ -31,3 +31,4 @@ target_include_directories(liminar PRIVATE
 
 target_link_libraries(liminar PRIVATE OpenMP::OpenMP_CXX)
 target_link_libraries(liminar PRIVATE SDL3::SDL3)
+target_link_libraries(liminar PRIVATE tinygltf_v3)

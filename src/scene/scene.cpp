@@ -1,7 +1,9 @@
 #include "scene.h"
 #include "renderer/material.h"
 #include "scene/primitive.h"
+#include "tiny_gltf_v3.h"
 #include "util/utils.h"
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -73,10 +75,10 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
       int32_t mtl_idx = obj_shape.mesh.material_ids[f];
       uint64_t hashed_bxdf_id =
           std::hash<std::string>()(filename + std::to_string(mtl_idx));
-      auto correspoing_bxdf = search_bxdf(hashed_bxdf_id);
+      auto corresponding_bxdf = search_bxdf(hashed_bxdf_id);
 
-      if (correspoing_bxdf) {
-        prim.bxdf = correspoing_bxdf->get();
+      if (corresponding_bxdf) {
+        prim.bxdf = corresponding_bxdf->get();
         Color emission =
             mtl_idx < 0 ? Color() : load_mtl_emission(obj_materials[mtl_idx]);
         if (emission.max() > EPS) {
@@ -147,6 +149,209 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   bxdfs.emplace_back(std::move(bxdf));
 
   return;
+}
+
+inline int32_t find_attrib_accessor(const tg3_primitive &tg_prim,
+                                    const std::string &semantic) {
+  for (uint32_t i = 0; i < tg_prim.attributes_count; i++) {
+    const tg3_str_int_pair &tg_attrib = tg_prim.attributes[i];
+
+    if (tg_attrib.key.len == semantic.size() &&
+        std::memcmp(tg_attrib.key.data, semantic.data(), semantic.size()) ==
+            0) {
+      return tg_attrib.value;
+    }
+  }
+  return TG3_INDEX_NONE;
+}
+
+inline const uint8_t *accessor_data(const tg3_model &tg_model,
+                                    const tg3_accessor &tg_accessor) {
+  if (tg_accessor.buffer_view == TG3_INDEX_NONE) {
+    return nullptr;
+  }
+
+  const tg3_buffer_view &view = tg_model.buffer_views[tg_accessor.buffer_view];
+  const tg3_buffer &buffer = tg_model.buffers[view.buffer];
+
+  return buffer.data.data + view.byte_offset + tg_accessor.byte_offset;
+}
+
+static uint32_t read_tg_index(const uint8_t *data, uint64_t index,
+                              uint32_t stride, int32_t component_type) {
+  const uint8_t *p = data + index * stride;
+
+  switch (component_type) {
+  case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
+    return *p;
+
+  case TG3_COMPONENT_TYPE_UNSIGNED_SHORT: {
+    uint16_t value;
+    std::memcpy(&value, p, sizeof(value));
+    return value;
+  }
+
+  case TG3_COMPONENT_TYPE_UNSIGNED_INT: {
+    uint32_t value;
+    std::memcpy(&value, p, sizeof(value));
+    return value;
+  }
+
+  default:
+    return UINT32_MAX;
+  }
+}
+
+void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
+                      const double scale, const Vec3 &tr) {
+  tg3_parse_options tg_options;
+  tg3_error_stack tg_errors;
+  tg3_model tg_model{};
+
+  tg3_parse_options_init(&tg_options);
+  tg3_error_stack_init(&tg_errors);
+
+  auto tg_result = tg3_parse_file(
+      &tg_model, &tg_errors, filename.c_str(),
+      static_cast<uint32_t>(std::strlen(filename.c_str())), &tg_options);
+
+  if (tg_result != TG3_OK) {
+    for (uint32_t i = 0; i < tg_errors.count; ++i) {
+      std::cerr << (tg_errors.entries[i].message ? tg_errors.entries[i].message
+                                                 : "unknown error")
+                << std::endl;
+    }
+  } else {
+    std::cout << "Meshes: " << tg_model.meshes_count << std::endl;
+  }
+
+  for (uint32_t mesh_i = 0; mesh_i < tg_model.meshes_count; mesh_i++) {
+    const tg3_mesh &tg_mesh = tg_model.meshes[mesh_i];
+
+    for (uint32_t prim_i = 0; prim_i < tg_mesh.primitives_count; prim_i++) {
+      const tg3_primitive &tg_prim = tg_mesh.primitives[prim_i];
+      const int32_t mode =
+          tg_prim.mode == TG3_INDEX_NONE ? TG3_MODE_TRIANGLES : tg_prim.mode;
+      if (mode != TG3_MODE_TRIANGLES) {
+        continue;
+      }
+
+      int32_t position_accessor_idx = find_attrib_accessor(tg_prim, "POSITION");
+      if (position_accessor_idx == TG3_INDEX_NONE) {
+        continue;
+      }
+
+      const tg3_accessor &tg_positions =
+          tg_model.accessors[position_accessor_idx];
+      if (tg_positions.component_type != TG3_COMPONENT_TYPE_FLOAT ||
+          tg_positions.type != TG3_TYPE_VEC3) {
+        std::cerr << "unsupported POSITION format: " << filename << std::endl;
+        continue;
+      }
+
+      const uint8_t *tg_position_data = accessor_data(tg_model, tg_positions);
+      if (!tg_position_data) {
+        std::cerr << "no POSITION accessor: " << filename << std::endl;
+        continue;
+      }
+
+      const tg3_buffer_view &tg_position_view =
+          tg_model.buffer_views[tg_positions.buffer_view];
+      const uint32_t tg_position_stride = tg_position_view.byte_stride != 0
+                                              ? tg_position_view.byte_stride
+                                              : sizeof(float) * 3;
+
+      float tmp_vertices[3][3];
+      // no indices
+      if (tg_prim.indices == TG3_INDEX_NONE) {
+        for (uint64_t i = 0; i + 2 < tg_positions.count; i += 3) {
+
+          for (uint32_t j = 0; j < 3; ++j) {
+            std::memcpy(&tmp_vertices[j],
+                        tg_position_data + (i + j) * tg_position_stride,
+                        sizeof(float) * 3);
+          }
+
+          continue;
+        }
+      } else {
+        const tg3_accessor &tg_indices = tg_model.accessors[tg_prim.indices];
+        if (tg_indices.type != TG3_TYPE_SCALAR) {
+          std::cerr << "unsupported index type: " << filename << std::endl;
+          continue;
+        }
+
+        const uint8_t *tg_index_data = accessor_data(tg_model, tg_indices);
+        if (!tg_index_data) {
+          std::cerr << "no index accessor: " << filename << std::endl;
+          continue;
+        }
+
+        const tg3_buffer_view &tg_index_view =
+            tg_model.buffer_views[tg_indices.buffer_view];
+
+        const uint32_t tg_index_size =
+            tg_indices.component_type == TG3_COMPONENT_TYPE_UNSIGNED_BYTE    ? 1
+            : tg_indices.component_type == TG3_COMPONENT_TYPE_UNSIGNED_SHORT ? 2
+            : tg_indices.component_type == TG3_COMPONENT_TYPE_UNSIGNED_INT   ? 4
+                                                                           : 0;
+        if (tg_index_size == 0) {
+          std::cerr << "unsupported index component type: " << filename
+                    << std::endl;
+          continue;
+        }
+
+        const uint32_t tg_index_stride = tg_index_view.byte_stride != 0
+                                             ? tg_index_view.byte_stride
+                                             : tg_index_size;
+
+        for (uint64_t i = 0; i + 2 < tg_indices.count; i += 3) {
+          const uint32_t vertex_indices[3] = {
+              read_tg_index(tg_index_data, i, tg_index_stride,
+                            tg_indices.component_type),
+              read_tg_index(tg_index_data, i + 1, tg_index_stride,
+                            tg_indices.component_type),
+              read_tg_index(tg_index_data, i + 2, tg_index_stride,
+                            tg_indices.component_type),
+          };
+
+          for (uint32_t j = 0; j < 3; ++j) {
+            if (vertex_indices[j] >= tg_positions.count) {
+              std::cerr << "Invalid vertex index\n";
+              break;
+            }
+
+            std::memcpy(&tmp_vertices[j],
+                        tg_position_data +
+                            vertex_indices[j] * tg_position_stride,
+                        sizeof(float) * 3);
+          }
+        }
+      }
+
+      Vec3 vertices[3];
+      for (uint32_t i = 0; i < 3; i++) {
+        vertices[i] =
+            Vec3((double)tmp_vertices[i][0], (double)tmp_vertices[i][1],
+                 (double)tmp_vertices[i][2]) *
+                scale +
+            tr;
+        vertices[i].display();
+      }
+
+      std::unique_ptr<Shape> shape =
+          std::make_unique<Triangle>(vertices[0], vertices[1], vertices[2]);
+      std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
+      Primitive prim = Primitive(shape.get(), bxdf.get(), primitives.size());
+
+      primitives.emplace_back(std::move(prim));
+      bxdfs.emplace_back(std::move(bxdf));
+      shapes.emplace_back(std::move(shape));
+    }
+  }
+
+  tg3_model_free(&tg_model);
+  tg3_error_stack_free(&tg_errors);
 }
 
 bool Scene::intersect(Ray &ray, HitRecord *record,
