@@ -151,6 +151,8 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
   return;
 }
 
+/* --- gltf --- */
+
 inline int32_t find_attrib_accessor(const tg3_primitive &tg_prim,
                                     const std::string &semantic) {
   for (uint32_t i = 0; i < tg_prim.attributes_count; i++) {
@@ -261,7 +263,31 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                               ? tg_position_view.byte_stride
                                               : sizeof(float) * 3;
 
-      float tmp_vertices[3][3];
+      int32_t normal_accessor_idx = find_attrib_accessor(tg_prim, "NORMAL");
+      if (normal_accessor_idx == TG3_INDEX_NONE) {
+        continue;
+      }
+
+      const tg3_accessor &tg_normals = tg_model.accessors[normal_accessor_idx];
+      if (tg_normals.component_type != TG3_COMPONENT_TYPE_FLOAT ||
+          tg_normals.type != TG3_TYPE_VEC3) {
+        std::cerr << "unsupported NORMAL format: " << filename << std::endl;
+        continue;
+      }
+
+      const uint8_t *tg_normal_data = accessor_data(tg_model, tg_normals);
+      if (!tg_normal_data) {
+        std::cerr << "no NORMAL accessor: " << filename << std::endl;
+        continue;
+      }
+
+      const tg3_buffer_view &tg_normal_view =
+          tg_model.buffer_views[tg_normals.buffer_view];
+      const uint32_t tg_normal_stride = tg_normal_view.byte_stride != 0
+                                            ? tg_normal_view.byte_stride
+                                            : sizeof(float) * 3;
+
+      float tmp_vertices[3][3], tmp_normals[3][3];
       // no indices
       if (tg_prim.indices == TG3_INDEX_NONE) {
         for (uint64_t i = 0; i + 2 < tg_positions.count; i += 3) {
@@ -269,6 +295,10 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
           for (uint32_t j = 0; j < 3; ++j) {
             std::memcpy(&tmp_vertices[j],
                         tg_position_data + (i + j) * tg_position_stride,
+                        sizeof(float) * 3);
+
+            std::memcpy(&tmp_normals[j],
+                        tg_normal_data + (i + j) * tg_position_stride,
                         sizeof(float) * 3);
           }
 
@@ -316,8 +346,9 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
           };
 
           for (uint32_t j = 0; j < 3; ++j) {
-            if (vertex_indices[j] >= tg_positions.count) {
-              std::cerr << "Invalid vertex index\n";
+            if (vertex_indices[j] >= tg_positions.count ||
+                vertex_indices[j] >= tg_normals.count) {
+              std::cerr << "invalid index" << std::endl;
               break;
             }
 
@@ -325,22 +356,29 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                         tg_position_data +
                             vertex_indices[j] * tg_position_stride,
                         sizeof(float) * 3);
+
+            std::memcpy(&tmp_normals[j],
+                        tg_normal_data + vertex_indices[j] * tg_normal_stride,
+                        sizeof(float) * 3);
           }
         }
       }
 
-      Vec3 vertices[3];
+      Vertex vertex[3];
       for (uint32_t i = 0; i < 3; i++) {
-        vertices[i] =
-            Vec3((double)tmp_vertices[i][0], (double)tmp_vertices[i][1],
-                 (double)tmp_vertices[i][2]) *
-                scale +
-            tr;
-        vertices[i].display();
+        Vec3 v = Vec3((double)tmp_vertices[i][0], (double)tmp_vertices[i][1],
+                      (double)tmp_vertices[i][2]) *
+                     scale +
+                 tr;
+
+        Vec3 n =
+            normalize(Vec3((double)tmp_normals[i][0], (double)tmp_normals[i][1],
+                           (double)tmp_normals[i][2]));
+        vertex[i] = Vertex(v, n);
       }
 
       std::unique_ptr<Shape> shape =
-          std::make_unique<Triangle>(vertices[0], vertices[1], vertices[2]);
+          std::make_unique<Triangle>(vertex[0], vertex[1], vertex[2]);
       std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
       Primitive prim = Primitive(shape.get(), bxdf.get(), primitives.size());
 
@@ -374,6 +412,8 @@ bool Scene::intersect(Ray &ray, HitRecord *record,
 
   return record->id != -1;
 }
+
+/* --- */
 
 void Scene::set_test_primitive() {
   // std::unique_ptr<Shape> sphere =

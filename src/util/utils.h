@@ -193,3 +193,34 @@ struct TexColor3f {
 inline TexColor3f operator*(const float d, const TexColor3f &t) {
   return t * d;
 }
+
+struct Mat4 {
+  double e[4][4];
+
+  Mat4(const double c) {
+    for (uint8_t row = 0; row < 4; row++) {
+      for (uint8_t col = 0; col < 4; col++) {
+        e[row][col] = c;
+      }
+    }
+  }
+
+  inline Mat4 operator*(const Mat4 &m) const {
+    Mat4 mat(0.);
+    for (uint8_t row = 0; row < 4; row++) {
+      for (uint8_t col = 0; col < 4; col++) {
+        mat.e[row][col] = e[row][0] * m.e[0][col] + e[row][1] * m.e[1][col] +
+                          e[row][2] * m.e[2][col] + e[row][3] * m.e[3][col];
+      }
+    }
+    return mat;
+  }
+};
+
+inline Vec3 transform(const Vec3 &v, const Mat4 &m) {
+  double x, y, z;
+  x = v.x * m.e[0][0] + v.y * m.e[0][1] + v.z * m.e[0][2] + m.e[0][3];
+  y = v.x * m.e[1][0] + v.y * m.e[1][1] + v.z * m.e[1][2] + m.e[1][3];
+  z = v.x * m.e[2][0] + v.y * m.e[2][1] + v.z * m.e[2][2] + m.e[2][3];
+  return Vec3(x, y, z);
+}
