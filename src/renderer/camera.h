@@ -23,7 +23,7 @@ public:
 
 class PinholeModel : public Camera {
 public:
-  PinholeModel(const uint32_t reso_w, const uint32_t reso_h,
+  PinholeModel(const uint32_t reso_w, const uint32_t reso_h, const Vec3 &up,
                const Point3 &sensor_center, const double sensor_w,
                const Vec3 &sensor_dir_, const double sensor_to_hole,
                const double w_scale)
@@ -36,7 +36,7 @@ public:
     pixel_width = sensor_width / (double)resolution_w;
     pixel_height = sensor_height / (double)resolution_h;
 
-    sensor_u = normalize(cross(sensor_dir, Vec3(0, 1, 0)));
+    sensor_u = normalize(cross(sensor_dir, up));
     sensor_v = normalize(cross(sensor_dir, sensor_u));
     sensor_corner = sensor_center - sensor_u * sensor_width / 2. -
                     sensor_v * sensor_height / 2.;
@@ -89,7 +89,7 @@ private:
 
 class LensModel : public Camera {
 public:
-  LensModel(const uint32_t reso_w, const uint32_t reso_h,
+  LensModel(const uint32_t reso_w, const uint32_t reso_h, const Vec3 &up,
             const Point3 &sensor_center, const double sensor_w,
             const Vec3 &sensor_dir_, const double sensor_to_lens,
             const double lens_radius, const double focal_dist,
@@ -103,7 +103,7 @@ public:
     pixel_width = sensor_width / (double)resolution_w;
     pixel_height = sensor_height / (double)resolution_h;
 
-    sensor_u = normalize(cross(sensor_dir, Vec3(0, 1, 0)));
+    sensor_u = normalize(cross(sensor_dir, up));
     sensor_v = normalize(cross(sensor_dir, sensor_u));
     sensor_corner = sensor_center - sensor_u * sensor_width / 2. -
                     sensor_v * sensor_height / 2.;

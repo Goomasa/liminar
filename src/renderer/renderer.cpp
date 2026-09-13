@@ -41,6 +41,8 @@ void Renderer::set_camera(ObjectNode &node) {
         (uint32_t)lens_node.search_key_safe<double>("resolution-w", 400);
     uint32_t reso_h =
         (uint32_t)lens_node.search_key_safe<double>("resolution-h", 400);
+    Vec3 up = vector_to_vec3(
+        lens_node.search_key_safe<std::vector<double>>("up", {0, 1, 0}));
     Point3 sensor_center =
         vector_to_vec3(lens_node.search_key_safe<std::vector<double>>(
             "sensor-center", {1, 1, 1}));
@@ -57,7 +59,7 @@ void Renderer::set_camera(ObjectNode &node) {
 
     double w_scale = lens_node.search_key_safe<double>("w-scale", 100);
 
-    camera = std::make_unique<LensModel>(reso_w, reso_h, sensor_center,
+    camera = std::make_unique<LensModel>(reso_w, reso_h, up, sensor_center,
                                          sensor_w, sensor_dir, sensor_to_lens,
                                          lens_radius, focal_distance, w_scale);
   } else {
@@ -66,6 +68,8 @@ void Renderer::set_camera(ObjectNode &node) {
         (uint32_t)pinhole_node.search_key_safe<double>("resolution-w", 400);
     uint32_t reso_h =
         (uint32_t)pinhole_node.search_key_safe<double>("resolution-h", 400);
+    Vec3 up = vector_to_vec3(
+        pinhole_node.search_key_safe<std::vector<double>>("up", {0, 1, 0}));
     Point3 sensor_center =
         vector_to_vec3(pinhole_node.search_key_safe<std::vector<double>>(
             "sensor-center", {0, 0, 0}));
@@ -77,9 +81,9 @@ void Renderer::set_camera(ObjectNode &node) {
     double sensor_w = pinhole_node.search_key_safe<double>("sensor-width", 30);
     double w_scale = pinhole_node.search_key_safe<double>("w-scale", 500);
 
-    camera =
-        std::make_unique<PinholeModel>(reso_w, reso_h, sensor_center, sensor_w,
-                                       sensor_dir, sensor_to_hole, w_scale);
+    camera = std::make_unique<PinholeModel>(reso_w, reso_h, up, sensor_center,
+                                            sensor_w, sensor_dir,
+                                            sensor_to_hole, w_scale);
   }
 }
 

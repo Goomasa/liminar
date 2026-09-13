@@ -14,6 +14,7 @@
     "pinhole":{
       "resolution-w":400,
       "resolution-h":400,
+      "up":[0,0,-1],
       "sensor-center":[0,25,120],
       "sensor-width":30,
       "sensor-dir":[0,0,-1],
@@ -24,6 +25,7 @@
     "lens":{
       "resolution-w":400,
       "resolution-h":400,
+      "up":[0,0,-1],
       "sensor-center":[0,25,120],
       "sensor-width":30,
       "sensor-dir":[0,0,-1],

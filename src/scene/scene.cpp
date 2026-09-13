@@ -224,7 +224,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                 << std::endl;
     }
   } else {
-    std::cout << "Meshes: " << tg_model.meshes_count << std::endl;
+    std::cout << "meshes: " << tg_model.meshes_count << std::endl;
+    std::cout << "lights: " << tg_model.lights_count << std::endl;
   }
 
   for (uint32_t mesh_i = 0; mesh_i < tg_model.meshes_count; mesh_i++) {
@@ -235,11 +236,13 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
       const int32_t mode =
           tg_prim.mode == TG3_INDEX_NONE ? TG3_MODE_TRIANGLES : tg_prim.mode;
       if (mode != TG3_MODE_TRIANGLES) {
+        std::cerr << "unsupported mode: " << filename << std::endl;
         continue;
       }
 
       int32_t position_accessor_idx = find_attrib_accessor(tg_prim, "POSITION");
       if (position_accessor_idx == TG3_INDEX_NONE) {
+        std::cerr << "invalid POSITION accessor" << filename << std::endl;
         continue;
       }
 
@@ -287,22 +290,33 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                             ? tg_normal_view.byte_stride
                                             : sizeof(float) * 3;
 
-      float tmp_vertices[3][3], tmp_normals[3][3];
+      std::vector<Vertex> triangle_verts;
       // no indices
       if (tg_prim.indices == TG3_INDEX_NONE) {
+        Vertex vertices[3];
+
         for (uint64_t i = 0; i + 2 < tg_positions.count; i += 3) {
+          float tmp_vertices[3], tmp_normals[3];
 
           for (uint32_t j = 0; j < 3; ++j) {
-            std::memcpy(&tmp_vertices[j],
+            std::memcpy(&tmp_vertices,
                         tg_position_data + (i + j) * tg_position_stride,
                         sizeof(float) * 3);
 
-            std::memcpy(&tmp_normals[j],
-                        tg_normal_data + (i + j) * tg_position_stride,
+            std::memcpy(&tmp_normals,
+                        tg_normal_data + (i + j) * tg_normal_stride,
                         sizeof(float) * 3);
-          }
 
-          continue;
+            Vec3 v = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
+                          (double)tmp_vertices[2]) *
+                         scale +
+                     tr;
+
+            Vec3 n =
+                normalize(Vec3((double)tmp_normals[0], (double)tmp_normals[1],
+                               (double)tmp_normals[2]));
+            triangle_verts.emplace_back(Vertex(v, n));
+          }
         }
       } else {
         const tg3_accessor &tg_indices = tg_model.accessors[tg_prim.indices];
@@ -336,6 +350,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                              : tg_index_size;
 
         for (uint64_t i = 0; i + 2 < tg_indices.count; i += 3) {
+          float tmp_vertices[3], tmp_normals[3];
           const uint32_t vertex_indices[3] = {
               read_tg_index(tg_index_data, i, tg_index_stride,
                             tg_indices.component_type),
@@ -352,39 +367,39 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
               break;
             }
 
-            std::memcpy(&tmp_vertices[j],
+            std::memcpy(&tmp_vertices,
                         tg_position_data +
                             vertex_indices[j] * tg_position_stride,
                         sizeof(float) * 3);
 
-            std::memcpy(&tmp_normals[j],
+            std::memcpy(&tmp_normals,
                         tg_normal_data + vertex_indices[j] * tg_normal_stride,
                         sizeof(float) * 3);
+
+            Vec3 v = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
+                          (double)tmp_vertices[2]) *
+                         scale +
+                     tr;
+
+            Vec3 n =
+                normalize(Vec3((double)tmp_normals[0], (double)tmp_normals[1],
+                               (double)tmp_normals[2]));
+            triangle_verts.emplace_back(Vertex(v, n));
           }
         }
       }
 
-      Vertex vertex[3];
-      for (uint32_t i = 0; i < 3; i++) {
-        Vec3 v = Vec3((double)tmp_vertices[i][0], (double)tmp_vertices[i][1],
-                      (double)tmp_vertices[i][2]) *
-                     scale +
-                 tr;
+      for (uint32_t tidx = 0; tidx < triangle_verts.size() / 3; tidx++) {
+        std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
+            triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
+            triangle_verts[tidx * 3 + 2]);
+        std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
+        Primitive prim = Primitive(shape.get(), bxdf.get(), primitives.size());
 
-        Vec3 n =
-            normalize(Vec3((double)tmp_normals[i][0], (double)tmp_normals[i][1],
-                           (double)tmp_normals[i][2]));
-        vertex[i] = Vertex(v, n);
+        primitives.emplace_back(std::move(prim));
+        bxdfs.emplace_back(std::move(bxdf));
+        shapes.emplace_back(std::move(shape));
       }
-
-      std::unique_ptr<Shape> shape =
-          std::make_unique<Triangle>(vertex[0], vertex[1], vertex[2]);
-      std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
-      Primitive prim = Primitive(shape.get(), bxdf.get(), primitives.size());
-
-      primitives.emplace_back(std::move(prim));
-      bxdfs.emplace_back(std::move(bxdf));
-      shapes.emplace_back(std::move(shape));
     }
   }
 
