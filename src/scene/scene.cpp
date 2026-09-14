@@ -176,6 +176,11 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
   } else {
     std::cout << "meshes: " << tg_model.meshes_count << std::endl;
     std::cout << "lights: " << tg_model.lights_count << std::endl;
+    std::cout << "nodes: " << tg_model.nodes_count << std::endl;
+  }
+
+  for (uint32_t i = 0; i < tg_model.nodes_count; i++) {
+    traverse_node(tg_model);
   }
 
   for (uint32_t mesh_i = 0; mesh_i < tg_model.meshes_count; mesh_i++) {
@@ -218,6 +223,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
       int32_t normal_accessor_idx = find_attrib_accessor(tg_prim, "NORMAL");
       if (normal_accessor_idx == TG3_INDEX_NONE) {
+        std::cerr << "no NORMAL accessor: " << filename << std::endl;
         continue;
       }
 
@@ -343,18 +349,32 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
         std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
             triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
             triangle_verts[tidx * 3 + 2]);
-        std::unique_ptr<Bxdf> bxdf;
-        Color emission;
-        load_gltf_material(tg_model, tg_prim, &bxdf, &emission);
 
-        Primitive prim =
-            Primitive(shape.get(), bxdf.get(), emission, primitives.size());
+        Primitive prim = Primitive(shape.get(), primitives.size());
+
+        uint64_t hashed_bxdf_id = std::hash<std::string>()(
+            filename +
+            std::to_string(tg_mesh.primitives_count * mesh_i + prim_i));
+        auto corresponding_bxdf = search_bxdf(hashed_bxdf_id);
+
+        if (corresponding_bxdf) {
+          prim.bxdf = corresponding_bxdf->get();
+          prim.emission = load_gltf_emission(tg_model, tg_prim);
+        } else {
+          std::unique_ptr<Bxdf> bxdf;
+          Color emission;
+          load_gltf_material(tg_model, tg_prim, &bxdf, &emission);
+          bxdf->id = hashed_bxdf_id;
+          prim.bxdf = bxdf.get();
+          prim.emission = emission;
+          bxdfs.emplace_back(std::move(bxdf));
+        }
+
         if (prim.is_light()) {
           lights.emplace_back(prim.id);
         }
 
         primitives.emplace_back(std::move(prim));
-        bxdfs.emplace_back(std::move(bxdf));
         shapes.emplace_back(std::move(shape));
       }
     }

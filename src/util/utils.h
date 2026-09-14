@@ -197,6 +197,15 @@ inline TexColor3f operator*(const float d, const TexColor3f &t) {
 struct Mat4 {
   double e[4][4];
 
+  Mat4() {
+    // id
+    for (uint8_t row = 0; row < 4; row++) {
+      for (uint8_t col = 0; col < 4; col++) {
+        e[row][col] = row == col ? 1. : 0.;
+      }
+    }
+  }
+
   Mat4(const double c) {
     for (uint8_t row = 0; row < 4; row++) {
       for (uint8_t col = 0; col < 4; col++) {
@@ -215,7 +224,37 @@ struct Mat4 {
     }
     return mat;
   }
+
+  inline Mat4 transpose() const {
+    Mat4 mat(0.);
+    for (uint8_t row = 0; row < 4; row++) {
+      for (uint8_t col = 0; col < 4; col++) {
+        mat.e[row][col] = e[col][row];
+      }
+    }
+    return mat;
+  }
+
+  inline void display() const {
+    std::cout << "{" << std::endl;
+    for (uint8_t row = 0; row < 4; row++) {
+      std::cout << e[row][0] << ", " << e[row][1] << ", " << e[row][2] << ", "
+                << e[row][3] << std::endl;
+    }
+    std::cout << "}" << std::endl;
+  }
 };
+
+inline bool operator==(const Mat4 &m1, const Mat4 &m2) {
+  for (uint8_t row = 0; row < 4; row++) {
+    for (uint8_t col = 0; col < 4; col++) {
+      if (m1.e[row][col] != m2.e[row][col]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 inline Vec3 transform(const Vec3 &v, const Mat4 &m) {
   double x, y, z;
@@ -223,4 +262,35 @@ inline Vec3 transform(const Vec3 &v, const Mat4 &m) {
   y = v.x * m.e[1][0] + v.y * m.e[1][1] + v.z * m.e[1][2] + m.e[1][3];
   z = v.x * m.e[2][0] + v.y * m.e[2][1] + v.z * m.e[2][2] + m.e[2][3];
   return Vec3(x, y, z);
+}
+
+inline Mat4 scale_mat(const double sx, const double sy, const double sz) {
+  Mat4 m = Mat4();
+  m.e[0][0] = sx;
+  m.e[1][1] = sy;
+  m.e[2][2] = sz;
+  return m;
+}
+
+inline Mat4 translation_mat(const double tx, const double ty, const double tz) {
+  Mat4 m = Mat4();
+  m.e[0][3] = tx;
+  m.e[1][3] = ty;
+  m.e[2][3] = tz;
+  return m;
+}
+
+inline Mat4 rotation_mat(const double qx, const double qy, const double qz,
+                         const double qw) {
+  Mat4 m = Mat4();
+  m.e[0][0] = qw * qw + qx * qx - qy * qy - qz * qz;
+  m.e[0][1] = 2 * (qx * qy - qz * qw);
+  m.e[0][2] = 2 * (qx * qz + qw * qy);
+  m.e[1][0] = 2 * (qx * qy + qz * qw);
+  m.e[1][1] = qw * qw - qx * qx + qy * qy - qz * qz;
+  m.e[1][2] = 2 * (qy * qz - qw * qx);
+  m.e[2][0] = 2 * (qx * qz - qw * qy);
+  m.e[2][1] = 2 * (qy * qz + qw * qx);
+  m.e[2][2] = qw * qw - qx * qx - qy * qy + qz * qz;
+  return m;
 }

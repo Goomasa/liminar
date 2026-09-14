@@ -3,6 +3,7 @@
 #include "renderer/material.h"
 #include "tiny_gltf_v3.h"
 #include "util/utils.h"
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -58,5 +59,21 @@ static uint32_t read_tg_index(const uint8_t *data, uint64_t index,
   }
 }
 
+inline Color load_gltf_emission(const tg3_model &tg_model,
+                                const tg3_primitive &tg_prim) {
+  if (tg_prim.material < 0 ||
+      tg_prim.material >= static_cast<int>(tg_model.materials_count)) {
+    return Color();
+  }
+
+  const tg3_material &tg_material = tg_model.materials[tg_prim.material];
+
+  return Color(tg_material.emissive_factor[0], tg_material.emissive_factor[1],
+               tg_material.emissive_factor[2]);
+}
+
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission);
+
+void traverse_node(const tg3_model &tg_model, const uint32_t node_idx = 0,
+                   const Mat4 &m = Mat4());

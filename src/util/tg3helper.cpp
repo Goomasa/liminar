@@ -2,6 +2,7 @@
 #include "renderer/material.h"
 #include "tiny_gltf_v3.h"
 #include "util/utils.h"
+#include <cstdint>
 #include <memory>
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
@@ -37,5 +38,43 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
   } else {
     *bxdf = std::move(
         std::make_unique<MixtureBrdf>(base_color, metalic, roughness));
+  }
+}
+
+Mat4 get_transform_mat(const tg3_node &node) {
+  Mat4 m = Mat4();
+  for (int row = 0; row < 4; ++row) {
+    for (int col = 0; col < 4; ++col) {
+      m.e[row][col] = node.matrix[row * 4 + col];
+    }
+  }
+
+  if (m != Mat4()) {
+    return m;
+  }
+
+  Mat4 tm, sm, rm;
+
+  tm = translation_mat(node.translation[0], node.translation[1],
+                       node.translation[2]);
+
+  rm = rotation_mat(node.rotation[0], node.rotation[1], node.rotation[2],
+                    node.rotation[3]);
+
+  sm = scale_mat(node.scale[0], node.scale[1], node.scale[2]);
+
+  return tm * rm * sm;
+}
+
+void traverse_node(const tg3_model &tg_model, const uint32_t node_idx,
+                   const Mat4 &m) {
+  const tg3_node &node = tg_model.nodes[node_idx];
+
+  Mat4 local_mat = get_transform_mat(node);
+  Mat4 world_mat = m * local_mat;
+  world_mat.display();
+
+  for (uint32_t i = 0; i < node.children_count; i++) {
+    traverse_node(tg_model, i, world_mat);
   }
 }
