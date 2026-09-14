@@ -9,6 +9,7 @@ set(exe_file
     config/lexer.cpp
     config/parser.cpp
     util/image.cpp
+    util/tg3helper.cpp
 )
 
 find_package(OpenMP REQUIRED)

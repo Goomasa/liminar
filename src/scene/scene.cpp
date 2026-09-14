@@ -2,6 +2,7 @@
 #include "renderer/material.h"
 #include "scene/primitive.h"
 #include "tiny_gltf_v3.h"
+#include "util/tg3helper.h"
 #include "util/utils.h"
 #include <cstdint>
 #include <functional>
@@ -152,57 +153,6 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
 }
 
 /* --- gltf --- */
-
-inline int32_t find_attrib_accessor(const tg3_primitive &tg_prim,
-                                    const std::string &semantic) {
-  for (uint32_t i = 0; i < tg_prim.attributes_count; i++) {
-    const tg3_str_int_pair &tg_attrib = tg_prim.attributes[i];
-
-    if (tg_attrib.key.len == semantic.size() &&
-        std::memcmp(tg_attrib.key.data, semantic.data(), semantic.size()) ==
-            0) {
-      return tg_attrib.value;
-    }
-  }
-  return TG3_INDEX_NONE;
-}
-
-inline const uint8_t *accessor_data(const tg3_model &tg_model,
-                                    const tg3_accessor &tg_accessor) {
-  if (tg_accessor.buffer_view == TG3_INDEX_NONE) {
-    return nullptr;
-  }
-
-  const tg3_buffer_view &view = tg_model.buffer_views[tg_accessor.buffer_view];
-  const tg3_buffer &buffer = tg_model.buffers[view.buffer];
-
-  return buffer.data.data + view.byte_offset + tg_accessor.byte_offset;
-}
-
-static uint32_t read_tg_index(const uint8_t *data, uint64_t index,
-                              uint32_t stride, int32_t component_type) {
-  const uint8_t *p = data + index * stride;
-
-  switch (component_type) {
-  case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
-    return *p;
-
-  case TG3_COMPONENT_TYPE_UNSIGNED_SHORT: {
-    uint16_t value;
-    std::memcpy(&value, p, sizeof(value));
-    return value;
-  }
-
-  case TG3_COMPONENT_TYPE_UNSIGNED_INT: {
-    uint32_t value;
-    std::memcpy(&value, p, sizeof(value));
-    return value;
-  }
-
-  default:
-    return UINT32_MAX;
-  }
-}
 
 void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                       const double scale, const Vec3 &tr) {
@@ -393,8 +343,15 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
         std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
             triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
             triangle_verts[tidx * 3 + 2]);
-        std::unique_ptr<Bxdf> bxdf = std::make_unique<Lambertian>(Color(1.));
-        Primitive prim = Primitive(shape.get(), bxdf.get(), primitives.size());
+        std::unique_ptr<Bxdf> bxdf;
+        Color emission;
+        load_gltf_material(tg_model, tg_prim, &bxdf, &emission);
+
+        Primitive prim =
+            Primitive(shape.get(), bxdf.get(), emission, primitives.size());
+        if (prim.is_light()) {
+          lights.emplace_back(prim.id);
+        }
 
         primitives.emplace_back(std::move(prim));
         bxdfs.emplace_back(std::move(bxdf));
@@ -406,6 +363,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
   tg3_model_free(&tg_model);
   tg3_error_stack_free(&tg_errors);
 }
+
+/* --- */
 
 bool Scene::intersect(Ray &ray, HitRecord *record,
                       const uint32_t node_id) const {
@@ -427,8 +386,6 @@ bool Scene::intersect(Ray &ray, HitRecord *record,
 
   return record->id != -1;
 }
-
-/* --- */
 
 void Scene::set_test_primitive() {
   // std::unique_ptr<Shape> sphere =
