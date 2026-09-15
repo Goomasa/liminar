@@ -28,10 +28,6 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
   double roughness = tg_pbr_info.roughness_factor;
   double metalic = tg_pbr_info.metallic_factor;
 
-  /* tmp */
-  *bxdf = std::move(std::make_unique<Lambertian>(base_color));
-  return;
-
   if (metalic == 1. && roughness == 0.) {
     *bxdf = std::move(std::make_unique<Mirror>(base_color));
   } else if (metalic == 0. && roughness == 1.) {
@@ -42,6 +38,8 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
     *bxdf = std::move(
         std::make_unique<MixtureBrdf>(base_color, metalic, roughness));
   }
+
+  bxdf->get()->display();
 }
 
 Mat4 get_node_transform_mat(const tg3_node &node) {

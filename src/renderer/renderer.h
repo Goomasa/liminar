@@ -13,7 +13,6 @@ public:
   std::unique_ptr<Camera> camera;
   uint32_t supersamples, samples_per_spx, threads_num;
   bool is_test = false;
-  bool has_gui = false;
 
   Renderer(const std::string &filename = "settings/test-setting.json") {
     ObjectNode node = load_json(filename);
@@ -29,11 +28,7 @@ public:
     if (is_test) {
       test_render();
     } else {
-      if (has_gui) {
-        render_with_gui();
-      } else {
-        render();
-      }
+      render();
     }
 
     end = std::chrono::system_clock::now();
@@ -45,8 +40,6 @@ public:
 
 private:
   void render() const;
-
-  void render_with_gui() const;
 
   void test_render() const;
 

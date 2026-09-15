@@ -135,6 +135,8 @@ inline Vec3 vmax(const Vec3 &v1, const Vec3 &v2) {
 typedef Vec3 Color;
 typedef Vec3 Point3;
 
+const Vec3 INVALID_VEC = Vec3(INF, INF, INF);
+
 inline double clamp01(const double d) { return fmin(1., fmax(d, 0.)); }
 
 inline double lerp1d(const double a, const double b, const double r) {

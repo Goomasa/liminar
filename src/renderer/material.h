@@ -278,21 +278,21 @@ private:
     Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
     Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
 
-    while (true) {
-      double phi = 2.0 * PI * rnd->gen();
-      double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
-      double sin_theta = sqrt(clamp01(1.0 - z * z));
-      double x = sin_theta * cos(phi);
-      double y = sin_theta * sin(phi);
-      Vec3 c = Vec3(x, y, z);
-      Vec3 h = c + vh;
+    double phi = 2.0 * PI * rnd->gen();
+    double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
+    double sin_theta = sqrt(clamp01(1.0 - z * z));
+    double x = sin_theta * cos(phi);
+    double y = sin_theta * sin(phi);
+    Vec3 c = Vec3(x, y, z);
+    Vec3 h = c + vh;
 
-      Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
-      Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
+    Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
+    Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
 
-      if (dot(reflection_dir(wo, wm), normal) > 0.) {
-        return wm;
-      }
+    if (dot(reflection_dir(wo, wm), normal) > 0.) {
+      return wm;
+    } else {
+      return INVALID_VEC;
     }
   }
 };
@@ -387,7 +387,7 @@ public:
               const double roughness)
       : base_color(color), metalic(metalic), specular(specular),
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
-    diffuse_prob = 1. / (2. - metalic);
+    diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
   MixtureBrdf(const Color &color, const double metalic, const double roughness)
@@ -451,21 +451,21 @@ private:
     Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
     Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
 
-    while (true) {
-      double phi = 2.0 * PI * rnd->gen();
-      double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
-      double sin_theta = sqrt(clamp01(1.0 - z * z));
-      double x = sin_theta * cos(phi);
-      double y = sin_theta * sin(phi);
-      Vec3 c = Vec3(x, y, z);
-      Vec3 h = c + vh;
+    double phi = 2.0 * PI * rnd->gen();
+    double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
+    double sin_theta = sqrt(clamp01(1.0 - z * z));
+    double x = sin_theta * cos(phi);
+    double y = sin_theta * sin(phi);
+    Vec3 c = Vec3(x, y, z);
+    Vec3 h = c + vh;
 
-      Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
-      Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
+    Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
+    Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
 
-      if (dot(reflection_dir(wo, wm), normal) > 0.) {
-        return wm;
-      }
+    if (dot(reflection_dir(wo, wm), normal) > 0.) {
+      return wm;
+    } else {
+      return INVALID_VEC;
     }
   }
 

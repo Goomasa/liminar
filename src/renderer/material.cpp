@@ -102,22 +102,22 @@ Vec3 MicroBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
   Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
   Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
 
-  while (true) {
-    double phi = 2.0 * PI * rnd->gen();
-    double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
-    double sin_theta = sqrt(clamp01(1.0 - z * z));
-    double x = sin_theta * cos(phi);
-    double y = sin_theta * sin(phi);
-    Vec3 c = Vec3(x, y, z);
-    Vec3 h = c + vh;
+  double phi = 2.0 * PI * rnd->gen();
+  double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
+  double sin_theta = sqrt(clamp01(1.0 - z * z));
+  double x = sin_theta * cos(phi);
+  double y = sin_theta * sin(phi);
+  Vec3 c = Vec3(x, y, z);
+  Vec3 h = c + vh;
 
-    Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
-    Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
-    Vec3 wi = reflection_dir(wo, wm);
+  Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
+  Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
+  Vec3 wi = reflection_dir(wo, wm);
 
-    if (dot(wi, normal) > 0.) {
-      return wi;
-    }
+  if (dot(wi, normal) > 0.) {
+    return wi;
+  } else {
+    return INVALID_VEC;
   }
 }
 
@@ -204,6 +204,10 @@ Vec3 MicroBtdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
   double r = ior_o / ior_i;
   Vec3 wm = sample_vndf(wo, normal, into, rnd);
 
+  if (wm == INVALID_VEC) {
+    return INVALID_VEC;
+  }
+
   double d = dot(wo, wm);
   if (1. - r * r * (1. - d * d) < 0.) {
     return reflection_dir(wo, wm);
@@ -237,22 +241,22 @@ Vec3 MicroBrdfAniso::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
   Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
   Vec3 vh = normalize(Vec3(alpha_x * ve.x, alpha_y * ve.y, ve.z));
 
-  while (true) {
-    double phi = 2.0 * PI * rnd->gen();
-    double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
-    double sin_theta = sqrt(clamp01(1.0 - z * z));
-    double x = sin_theta * cos(phi);
-    double y = sin_theta * sin(phi);
-    Vec3 c = Vec3(x, y, z);
-    Vec3 h = c + vh;
+  double phi = 2.0 * PI * rnd->gen();
+  double z = fma((1.0 - rnd->gen()), (1.0 + vh.z), -vh.z);
+  double sin_theta = sqrt(clamp01(1.0 - z * z));
+  double x = sin_theta * cos(phi);
+  double y = sin_theta * sin(phi);
+  Vec3 c = Vec3(x, y, z);
+  Vec3 h = c + vh;
 
-    Vec3 wm_tmp = Vec3(alpha_x * h.x, alpha_y * h.y, h.z);
-    Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
-    Vec3 wi = reflection_dir(wo, wm);
+  Vec3 wm_tmp = Vec3(alpha_x * h.x, alpha_y * h.y, h.z);
+  Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
+  Vec3 wi = reflection_dir(wo, wm);
 
-    if (dot(wi, normal) > 0.) {
-      return wi;
-    }
+  if (dot(wi, normal) > 0.) {
+    return wi;
+  } else {
+    return INVALID_VEC;
   }
 }
 
@@ -274,7 +278,7 @@ Vec3 MixtureBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
     return sample_cosine_hemisphere(wo, normal, rnd);
   } else {
     Vec3 wm = sample_vndf(wo, normal, rnd);
-    return reflection_dir(wo, wm);
+    return wm == INVALID_VEC ? wm : reflection_dir(wo, wm);
   }
 }
 

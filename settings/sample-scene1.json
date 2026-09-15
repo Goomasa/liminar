@@ -40,7 +40,6 @@
     "supersamples":16,
     "samples-per-superpixel":8,
     "threads-num":10,
-    "is-test":false,
-    "gui":false
+    "is-test":false
   }
 }

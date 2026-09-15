@@ -3,8 +3,8 @@
     "background-type":"image",
     "background":"brown_photostudio.hdr",
     "models":{
-      "path":"models/cornell-box",
-      "scale":10.0,
+      "path":"models/empty",
+      "scale":1.0,
       "translation":[0,0,0]
     }
   },
@@ -40,7 +40,6 @@
     "supersamples":8,
     "samples-per-superpixel":4,
     "threads-num":10,
-    "is-test":false,
-    "gui":false
+    "is-test":false
   }
 }

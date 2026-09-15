@@ -1,10 +1,4 @@
 #include "renderer.h"
-#include "SDL3/SDL_error.h"
-#include "SDL3/SDL_init.h"
-#include "SDL3/SDL_pixels.h"
-#include "SDL3/SDL_render.h"
-#include "SDL3/SDL_timer.h"
-#include "SDL3/SDL_video.h"
 #include "config/parser.h"
 #include "renderer/camera.h"
 #include "renderer/integrator.h"
@@ -12,7 +6,6 @@
 #include "scene/texture.h"
 #include "util/image.h"
 #include "util/utils.h"
-#include <SDL3/SDL.h>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -30,7 +23,6 @@ void Renderer::set_renderer(ObjectNode &node) {
   threads_num =
       (uint32_t)renderer_node.search_key_safe<double>("threads-num", 1);
   is_test = renderer_node.search_key_safe<bool>("is-test", false);
-  has_gui = renderer_node.search_key_safe<bool>("gui", false);
 }
 
 void Renderer::set_camera(ObjectNode &node) {
@@ -247,6 +239,7 @@ inline void update_buffer(const std::vector<Color> &image,
   }
 }
 
+/*
 void Renderer::render_with_gui() const {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     std::cerr << "failed to initialize SDL3: " << SDL_GetError() << std::endl;
@@ -354,3 +347,4 @@ void Renderer::render_with_gui() const {
   SDL_DestroyWindow(sdl_window);
   SDL_Quit();
 }
+*/
