@@ -6,45 +6,47 @@
 constexpr double CI = 2;
 constexpr double CT = 3;
 
-inline AABB scene_bbox(const std::vector<Primitive> &prims) {
+inline AABB scene_bbox(const std::vector<const Primitive *> &prims) {
   AABB bbox = AABB();
-  for (const Primitive &prim : prims) {
-    bbox = bbox + prim.shape->get_bbox();
+  for (const Primitive *prim : prims) {
+    bbox = bbox + prim->shape->get_bbox();
   }
   return bbox;
 }
 
-inline void sort_primitives(std::vector<Primitive> *prims, const uint8_t axis) {
+inline void sort_primitives(std::vector<const Primitive *> *prims,
+                            const uint8_t axis) {
   std::sort(prims->begin(), prims->end(),
-            [axis](const Primitive &a, const Primitive &b) {
-              return a.shape->get_center()[axis] < b.shape->get_center()[axis];
+            [axis](const Primitive *a, const Primitive *b) {
+              return a->shape->get_center()[axis] <
+                     b->shape->get_center()[axis];
             });
   return;
 }
 
-void BVH::basic_builder(const std::vector<Primitive> &prims) {
+void BVH::basic_builder(const std::vector<const Primitive *> &prims) {
   if (prims.size() <= 1) {
     return;
   }
 
-  std::vector<std::vector<Primitive>> tmp_prims_tree = {prims};
+  std::vector<std::vector<const Primitive *>> tmp_prims_tree = {prims};
   tree.emplace_back(BVHNode(scene_bbox(prims), 0, 0));
 
   for (uint32_t idx = 0; idx < prims.size() - 1; idx++) {
-    std::vector<Primitive> *prims_in_box = &tmp_prims_tree[idx];
+    std::vector<const Primitive *> *prims_in_box = &tmp_prims_tree[idx];
 
     sort_primitives(prims_in_box, idx % 3);
     uint32_t partition = prims_in_box->size() / 2;
 
-    std::vector<Primitive> left_prims(prims_in_box->begin(),
-                                      prims_in_box->begin() + partition);
-    std::vector<Primitive> right_prims(prims_in_box->begin() + partition,
-                                       prims_in_box->end());
+    std::vector<const Primitive *> left_prims(
+        prims_in_box->begin(), prims_in_box->begin() + partition);
+    std::vector<const Primitive *> right_prims(
+        prims_in_box->begin() + partition, prims_in_box->end());
     prims_in_box->clear();
     prims_in_box->shrink_to_fit();
 
     if (left_prims.size() == 1) {
-      tree[idx].left = left_prims[0].id << 1 | 1;
+      tree[idx].left = left_prims[0]->id << 1 | 1;
     } else {
       tree[idx].left = tree.size() << 1;
       tree.emplace_back(BVHNode(scene_bbox(left_prims), 0, 0));
@@ -52,7 +54,7 @@ void BVH::basic_builder(const std::vector<Primitive> &prims) {
     }
 
     if (right_prims.size() == 1) {
-      tree[idx].right = right_prims[0].id << 1 | 1;
+      tree[idx].right = right_prims[0]->id << 1 | 1;
     } else {
       tree[idx].right = tree.size() << 1;
       tree.emplace_back(scene_bbox(right_prims), 0, 0);
@@ -61,16 +63,16 @@ void BVH::basic_builder(const std::vector<Primitive> &prims) {
   }
 }
 
-void BVH::sah_builder(const std::vector<Primitive> &prims) {
+void BVH::sah_builder(const std::vector<const Primitive *> &prims) {
   if (prims.size() <= 1) {
     return;
   }
 
-  std::vector<std::vector<Primitive>> tmp_prims_tree = {prims};
+  std::vector<std::vector<const Primitive *>> tmp_prims_tree = {prims};
   tree.emplace_back(BVHNode(scene_bbox(prims), 0, 0));
 
   for (uint32_t idx = 0; idx < prims.size() - 1; idx++) {
-    std::vector<Primitive> *prims_in_box = &tmp_prims_tree[idx];
+    std::vector<const Primitive *> *prims_in_box = &tmp_prims_tree[idx];
     uint32_t prims_box_size = prims_in_box->size();
 
     uint32_t partition = 1;
@@ -83,12 +85,12 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
       AABB left_bbox = AABB(), right_bbox = AABB();
       for (uint32_t i = 0; i < prims_box_size - 1; i++) {
-        left_bbox = left_bbox + prims_in_box->at(i).shape->get_bbox();
+        left_bbox = left_bbox + prims_in_box->at(i)->shape->get_bbox();
         area_left[i] = left_bbox.get_area();
       }
 
       for (uint32_t i = prims_box_size - 1; i >= 1; i--) {
-        right_bbox = right_bbox + prims_in_box->at(i).shape->get_bbox();
+        right_bbox = right_bbox + prims_in_box->at(i)->shape->get_bbox();
         double cost =
             area_left[i - 1] * i + right_bbox.get_area() * (prims_box_size - i);
         if (cost < min_cost) {
@@ -101,15 +103,15 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
 
     sort_primitives(prims_in_box, best_axis);
 
-    std::vector<Primitive> left_prims(prims_in_box->begin(),
-                                      prims_in_box->begin() + partition);
-    std::vector<Primitive> right_prims(prims_in_box->begin() + partition,
-                                       prims_in_box->end());
+    std::vector<const Primitive *> left_prims(
+        prims_in_box->begin(), prims_in_box->begin() + partition);
+    std::vector<const Primitive *> right_prims(
+        prims_in_box->begin() + partition, prims_in_box->end());
     prims_in_box->clear();
     prims_in_box->shrink_to_fit();
 
     if (left_prims.size() == 1) {
-      tree[idx].left = left_prims[0].id << 1 | 1;
+      tree[idx].left = left_prims[0]->id << 1 | 1;
     } else {
       tree[idx].left = tree.size() << 1;
       tree.emplace_back(BVHNode(scene_bbox(left_prims), 0, 0));
@@ -117,7 +119,7 @@ void BVH::sah_builder(const std::vector<Primitive> &prims) {
     }
 
     if (right_prims.size() == 1) {
-      tree[idx].right = right_prims[0].id << 1 | 1;
+      tree[idx].right = right_prims[0]->id << 1 | 1;
     } else {
       tree[idx].right = tree.size() << 1;
       tree.emplace_back(scene_bbox(right_prims), 0, 0);

@@ -2,6 +2,7 @@
 
 #include "scene/aabb.h"
 #include "scene/primitive.h"
+#include <cstdint>
 #include <iostream>
 #include <vector>
 
@@ -23,15 +24,20 @@ public:
   BVH() {}
 
   BVH(const std::vector<Primitive> &prims) {
-    sah_builder(prims);
+    std::vector<const Primitive *> prims_ptr(prims.size());
+    for (uint32_t i = 0; i < prims.size(); i++) {
+      prims_ptr[i] = &prims[i];
+    }
+    sah_builder(prims_ptr);
+    // basic_builder(prims_ptr);
 
     tree.shrink_to_fit();
     std::cout << "SAH: " << get_sah() << std::endl;
   }
 
-  void basic_builder(const std::vector<Primitive> &prims);
+  void basic_builder(const std::vector<const Primitive *> &prims);
 
-  void sah_builder(const std::vector<Primitive> &prims);
+  void sah_builder(const std::vector<const Primitive *> &prims);
 
   double get_sah() const;
 };

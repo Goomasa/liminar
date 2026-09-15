@@ -2,13 +2,11 @@
 #include "renderer/material.h"
 #include "tiny_gltf_v3.h"
 #include "util/utils.h"
-#include <cstdint>
 #include <memory>
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission) {
-  if (tg_prim.material < 0 ||
-      tg_prim.material >= static_cast<int>(tg_model.materials_count)) {
+  if (tg_prim.material < 0 || tg_prim.material >= tg_model.materials_count) {
     *bxdf = std::move(std::make_unique<Lambertian>(Color(1.)));
     *emission = Color();
     return;
@@ -28,6 +26,10 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
             tg_pbr_info.base_color_factor[2]);
   double roughness = tg_pbr_info.roughness_factor;
   double metalic = tg_pbr_info.metallic_factor;
+
+  /* tmp */
+  *bxdf = std::move(std::make_unique<Lambertian>(base_color));
+  return;
 
   if (metalic == 1. && roughness == 0.) {
     *bxdf = std::move(std::make_unique<Mirror>(base_color));
@@ -64,17 +66,4 @@ Mat4 get_transform_mat(const tg3_node &node) {
   sm = scale_mat(node.scale[0], node.scale[1], node.scale[2]);
 
   return tm * rm * sm;
-}
-
-void traverse_node(const tg3_model &tg_model, const uint32_t node_idx,
-                   const Mat4 &m) {
-  const tg3_node &node = tg_model.nodes[node_idx];
-
-  Mat4 local_mat = get_transform_mat(node);
-  Mat4 world_mat = m * local_mat;
-  world_mat.display();
-
-  for (uint32_t i = 0; i < node.children_count; i++) {
-    traverse_node(tg_model, i, world_mat);
-  }
 }

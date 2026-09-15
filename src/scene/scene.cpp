@@ -179,12 +179,20 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
     std::cout << "nodes: " << tg_model.nodes_count << std::endl;
   }
 
-  for (uint32_t i = 0; i < tg_model.nodes_count; i++) {
-    traverse_node(tg_model);
-  }
+  for (uint32_t node_i = 0; node_i < tg_model.nodes_count; node_i++) {
+    const tg3_node &tg_node = tg_model.nodes[node_i];
+    if (tg_node.mesh == TG3_INDEX_NONE) {
+      continue;
+    }
 
-  for (uint32_t mesh_i = 0; mesh_i < tg_model.meshes_count; mesh_i++) {
-    const tg3_mesh &tg_mesh = tg_model.meshes[mesh_i];
+    if (tg_node.children_count > 0) {
+      for (uint32_t i = 0; i < tg_node.children_count; i++) {
+        std::cout << node_i << " -> " << tg_node.children[i] << std::endl;
+        // get_transform_mat(tg_model.nodes[tg_node.children[i]]).display();
+      }
+    }
+
+    const tg3_mesh &tg_mesh = tg_model.meshes[tg_node.mesh];
 
     for (uint32_t prim_i = 0; prim_i < tg_mesh.primitives_count; prim_i++) {
       const tg3_primitive &tg_prim = tg_mesh.primitives[prim_i];
@@ -246,6 +254,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                             ? tg_normal_view.byte_stride
                                             : sizeof(float) * 3;
 
+      Mat4 transform_mat = get_transform_mat(tg_node);
       std::vector<Vertex> triangle_verts;
       // no indices
       if (tg_prim.indices == TG3_INDEX_NONE) {
@@ -264,13 +273,13 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                         sizeof(float) * 3);
 
             Vec3 v = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
-                          (double)tmp_vertices[2]) *
-                         scale +
-                     tr;
+                          (double)tmp_vertices[2]);
 
-            Vec3 n =
-                normalize(Vec3((double)tmp_normals[0], (double)tmp_normals[1],
-                               (double)tmp_normals[2]));
+            Vec3 n = Vec3((double)tmp_normals[0], (double)tmp_normals[1],
+                          (double)tmp_normals[2]);
+
+            v = transform(v, transform_mat) * scale + tr;
+            n = normalize(transform(n, transform_mat));
             triangle_verts.emplace_back(Vertex(v, n));
           }
         }
@@ -333,13 +342,13 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                         sizeof(float) * 3);
 
             Vec3 v = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
-                          (double)tmp_vertices[2]) *
-                         scale +
-                     tr;
+                          (double)tmp_vertices[2]);
 
-            Vec3 n =
-                normalize(Vec3((double)tmp_normals[0], (double)tmp_normals[1],
-                               (double)tmp_normals[2]));
+            Vec3 n = Vec3((double)tmp_normals[0], (double)tmp_normals[1],
+                          (double)tmp_normals[2]);
+
+            v = transform(v, transform_mat) * scale + tr;
+            n = normalize(transform(n, transform_mat));
             triangle_verts.emplace_back(Vertex(v, n));
           }
         }
@@ -354,19 +363,19 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
         uint64_t hashed_bxdf_id = std::hash<std::string>()(
             filename +
-            std::to_string(tg_mesh.primitives_count * mesh_i + prim_i));
+            std::to_string(tg_mesh.primitives_count * node_i + prim_i));
         auto corresponding_bxdf = search_bxdf(hashed_bxdf_id);
 
         if (corresponding_bxdf) {
           prim.bxdf = corresponding_bxdf->get();
-          prim.emission = load_gltf_emission(tg_model, tg_prim);
+          prim.emission = load_gltf_emission(tg_model, tg_prim) * 10;
         } else {
           std::unique_ptr<Bxdf> bxdf;
           Color emission;
           load_gltf_material(tg_model, tg_prim, &bxdf, &emission);
           bxdf->id = hashed_bxdf_id;
           prim.bxdf = bxdf.get();
-          prim.emission = emission;
+          prim.emission = emission * 10;
           bxdfs.emplace_back(std::move(bxdf));
         }
 

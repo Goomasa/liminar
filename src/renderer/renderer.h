@@ -20,7 +20,6 @@ public:
     set_camera(node);
     set_scene(node);
     set_renderer(node);
-    exit(0);
 
     scene->construct_bvh();
 
