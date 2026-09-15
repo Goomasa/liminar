@@ -185,13 +185,6 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
       continue;
     }
 
-    if (tg_node.children_count > 0) {
-      for (uint32_t i = 0; i < tg_node.children_count; i++) {
-        std::cout << node_i << " -> " << tg_node.children[i] << std::endl;
-        // get_transform_mat(tg_model.nodes[tg_node.children[i]]).display();
-      }
-    }
-
     const tg3_mesh &tg_mesh = tg_model.meshes[tg_node.mesh];
 
     for (uint32_t prim_i = 0; prim_i < tg_mesh.primitives_count; prim_i++) {
@@ -254,7 +247,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                             ? tg_normal_view.byte_stride
                                             : sizeof(float) * 3;
 
-      Mat4 transform_mat = get_transform_mat(tg_node);
+      Mat4 transform_mat = get_transform_mat(tg_model, node_i);
       std::vector<Vertex> triangle_verts;
       // no indices
       if (tg_prim.indices == TG3_INDEX_NONE) {

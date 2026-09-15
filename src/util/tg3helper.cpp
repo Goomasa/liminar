@@ -2,6 +2,7 @@
 #include "renderer/material.h"
 #include "tiny_gltf_v3.h"
 #include "util/utils.h"
+#include <cstdint>
 #include <memory>
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
@@ -43,7 +44,7 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
   }
 }
 
-Mat4 get_transform_mat(const tg3_node &node) {
+Mat4 get_node_transform_mat(const tg3_node &node) {
   Mat4 m = Mat4();
   for (int row = 0; row < 4; ++row) {
     for (int col = 0; col < 4; ++col) {
@@ -66,4 +67,23 @@ Mat4 get_transform_mat(const tg3_node &node) {
   sm = scale_mat(node.scale[0], node.scale[1], node.scale[2]);
 
   return tm * rm * sm;
+}
+
+Mat4 get_transform_mat(const tg3_model &tg_model, const uint32_t node_idx) {
+  Mat4 m = get_node_transform_mat(tg_model.nodes[node_idx]);
+
+  for (uint32_t i = 0; i < tg_model.nodes_count; i++) {
+    tg3_node parent = tg_model.nodes[i];
+    if (parent.children_count <= 0) {
+      continue;
+    }
+
+    for (uint32_t j = 0; j < parent.children_count; j++) {
+      if (parent.children[j] == node_idx) {
+        m = get_transform_mat(tg_model, i) * m;
+      }
+    }
+  }
+
+  return m;
 }
