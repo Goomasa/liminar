@@ -1,5 +1,6 @@
 #include "bvh.h"
 #include "scene/aabb.h"
+#include "scene/primitive.h"
 #include <algorithm>
 #include <vector>
 
@@ -57,7 +58,7 @@ void BVH::basic_builder(const std::vector<const Primitive *> &prims) {
       tree[idx].right = right_prims[0]->id << 1 | 1;
     } else {
       tree[idx].right = tree.size() << 1;
-      tree.emplace_back(scene_bbox(right_prims), 0, 0);
+      tree.emplace_back(BVHNode(scene_bbox(right_prims), 0, 0));
       tmp_prims_tree.emplace_back(std::move(right_prims));
     }
   }
@@ -128,16 +129,22 @@ void BVH::sah_builder(const std::vector<const Primitive *> &prims) {
   }
 }
 
-double BVH::get_sah() const {
+double BVH::get_sah(const std::vector<const Primitive *> &prims) const {
+  if (prims.size() == 0) {
+    return 0;
+  } else if (prims.size() == 1) {
+    return CI;
+  }
+
   double cost = 0;
   double root_area = tree[0].bbox.get_area();
 
-  for (BVHNode node : tree) {
-    if (node.left == -1) {
-      cost += node.bbox.get_area() * CI / root_area;
-    } else {
-      cost += node.bbox.get_area() * CT / root_area;
-    }
+  for (const BVHNode &node : tree) {
+    cost += node.bbox.get_area() * CT / root_area;
+  }
+
+  for (const Primitive *prim : prims) {
+    cost += prim->shape->get_bbox().get_area() * CI / root_area;
   }
 
   return cost;
