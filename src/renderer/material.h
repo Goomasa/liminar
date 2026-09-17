@@ -14,9 +14,9 @@ public:
   virtual ~Bxdf() = default;
   virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
                      const bool into, const IntegrateMode &mode) const = 0;
-  virtual Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
+  virtual Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
                       Random *rnd, const IntegrateMode &mode) const = 0;
-  virtual double sampling_pdf(const Vec3 &wo, const Vec3 &wi,
+  virtual double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
                               const Vec3 &normal, const bool into,
                               const IntegrateMode &mode) const = 0;
 
@@ -52,6 +52,12 @@ protected:
     double r = ior_prev / ior_next, d = dot(dir_prev, normal);
     return normalize(-r * (dir_prev - d * normal) -
                      normal * std::sqrt(1. - r * r * (1. - d * d)));
+  }
+
+  inline static bool check_refraction(const Vec3 &dir_prev, const Vec3 &normal,
+                                      const double r_pn) {
+    double d = dot(dir_prev, normal);
+    return 1. - r_pn * r_pn * (1. - d * d) >= 0.;
   }
 
   inline static double schlick_fresnel(const Vec3 &dir_prev,

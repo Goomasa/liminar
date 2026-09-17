@@ -9,11 +9,15 @@
 struct Vertex {
   Point3 position;
   Vec3 normal;
+  Vec2 uv;
 
   Vertex() : position(Point3()), normal(Vec3(1, 0, 0)) {}
 
   Vertex(const Point3 &pos, const Vec3 &normal)
-      : position(pos), normal(normalize(normal)) {}
+      : position(pos), normal(normalize(normal)), uv(0.5) {}
+
+  Vertex(const Point3 &pos, const Vec3 &normal, const Vec2 &uv)
+      : position(pos), normal(normal), uv(uv) {}
 };
 
 class Shape {
@@ -26,6 +30,7 @@ public:
   virtual double pdf_sample_surface_area() const = 0;
   virtual Point3 sample_surface(Random *rnd, double *pdf) const = 0;
   virtual Vec3 get_normal(const Point3 &pos) const = 0;
+  virtual Vec2 get_uv(const Point3 &pos) const = 0;
 };
 
 class Triangle : public Shape {
@@ -77,8 +82,7 @@ public:
     return normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, pos));
   }
 
-private:
-  Vec2 get_uv(const Point3 pos) const {
+  Vec2 get_uv(const Point3 &pos) const override {
     Vec3 p_pos = pos - p.position;
     Vec3 pq = q.position - p.position;
     Vec3 pr = r.position - p.position;
@@ -90,6 +94,7 @@ private:
     return Vec2(u, v);
   }
 
+private:
   template <typename T>
   inline T tlerp(const T pv, const T qv, const T rv, const Point3 &pos) const {
     Vec2 uv = get_uv(pos);
@@ -132,6 +137,8 @@ public:
   Vec3 get_normal(const Point3 &pos) const override {
     return normalize(pos - center);
   }
+
+  Vec2 get_uv(const Vec3 &pos) const override { return Vec2(0.5); }
 };
 
 class Cylinder : public Shape {
@@ -170,6 +177,8 @@ public:
     double k = dot(dir, pos - bottom);
     return normalize(pos - bottom - k * dir);
   }
+
+  Vec2 get_uv(const Vec3 &pos) const override { return Vec2(0.5); }
 };
 
 class Disk : public Shape {
@@ -198,6 +207,8 @@ public:
   Point3 sample_surface(Random *rnd, double *pdf) const override;
 
   Vec3 get_normal(const Point3 &pos) const override { return normal; }
+
+  Vec2 get_uv(const Vec3 &pos) const override { return Vec2(0.5); }
 };
 
 class Primitive {
