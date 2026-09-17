@@ -1,4 +1,5 @@
 #include "integrator.h"
+#include "renderer/material.h"
 #include "renderer/ray.h"
 #include "scene/primitive.h"
 #include "util/utils.h"
@@ -19,6 +20,7 @@ inline double roullete(const uint32_t depth) {
 }
 
 void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
+  const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray;
   HitRecord record = HitRecord();
   Color throughput = Color(1.);
@@ -51,15 +53,16 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     wo = -1. * now_ray.dir;
     bool into = dot(orienting_normal, record.normal) > 0.;
 
-    Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd);
+    Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd, mode);
     if (wi == INVALID_VEC) {
       break;
     }
 
     now_ray = Ray(record.hitpoint, wi, record.id);
-    throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
+    throughput = throughput *
+                 prim->bxdf->eval(wo, wi, orienting_normal, into, mode) *
                  fabs(dot(wi, orienting_normal));
-    pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
+    pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
   }
 }
 
@@ -177,6 +180,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 */
 
 void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
+  const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray, test_ray = Ray(Point3(), Vec3());
   HitRecord record = HitRecord(), test_record = HitRecord();
   Color throughput = Color(1.);
@@ -234,8 +238,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       Vec3 to_light = pos_on_light - record.hitpoint;
       Vec3 to_light_norm = normalize(to_light);
 
-      pdf_bxdf =
-          prim->bxdf->sampling_pdf(wo, to_light_norm, orienting_normal, into);
+      pdf_bxdf = prim->bxdf->sampling_pdf(wo, to_light_norm, orienting_normal,
+                                          into, mode);
 
       test_record.reset(to_light.len() + 0.1);
       test_ray = Ray(record.hitpoint, to_light_norm, record.id);
@@ -252,22 +256,24 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 
         Color tmp_throughput =
             throughput *
-            prim->bxdf->eval(wo, to_light_norm, orienting_normal, into) *
+            prim->bxdf->eval(wo, to_light_norm, orienting_normal, into, mode) *
             fabs(dot(to_light_norm, orienting_normal));
         value = value + light->emission * (tmp_throughput * mis_weight /
                                            (pdf * pdf_sample_light));
       }
     }
 
-    Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd);
+    Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd, mode);
     if (wi == INVALID_VEC) {
       break;
     }
 
     now_ray = Ray(record.hitpoint, wi, record.id);
-    throughput = throughput * prim->bxdf->eval(wo, wi, orienting_normal, into) *
+    throughput = throughput *
+                 prim->bxdf->eval(wo, wi, orienting_normal, into, mode) *
                  fabs(dot(wi, orienting_normal));
-    prev_pdf_bxdf = prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into);
+    prev_pdf_bxdf =
+        prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
     pdf *= prev_pdf_bxdf;
   }
 }

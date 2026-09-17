@@ -5,25 +5,27 @@
 #include <algorithm>
 #include <cmath>
 
+enum class IntegrateMode { PT };
+
 class Bxdf {
 public:
   uint64_t id;
 
   virtual ~Bxdf() = default;
   virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                     const bool into) const = 0;
+                     const bool into, const IntegrateMode &mode) const = 0;
   virtual Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                      Random *rnd) const = 0;
+                      Random *rnd, const IntegrateMode &mode) const = 0;
   virtual double sampling_pdf(const Vec3 &wo, const Vec3 &wi,
-                              const Vec3 &normal, const bool into) const = 0;
+                              const Vec3 &normal, const bool into,
+                              const IntegrateMode &mode) const = 0;
 
   virtual bool is_specular() const = 0;
 
   virtual void display() const = 0;
 
 protected:
-  static Vec3 sample_cosine_hemisphere(const Vec3 &wo, const Vec3 &normal,
-                                       Random *rnd) {
+  static Vec3 sample_cosine_hemisphere(const Vec3 &normal, Random *rnd) {
     Vec3 w = normal, u, v;
     if (fabs(w.x) > EPS) {
       u = normalize(cross(Vec3(0, 1, 0), w));
@@ -40,24 +42,26 @@ protected:
                      w * sqrt(1 - sin_theta2));
   }
 
-  inline static Vec3 reflection_dir(const Vec3 &wo, const Vec3 &normal) {
-    return normalize(normal * 2. * dot(normal, wo) - wo);
+  inline static Vec3 reflection_dir(const Vec3 &dir_prev, const Vec3 &normal) {
+    return normalize(normal * 2. * dot(normal, dir_prev) - dir_prev);
   }
 
-  inline static Vec3 refraction_dir(const Vec3 &wo, const Vec3 &normal,
-                                    const double ior_o, const double ior_i) {
-    // ior_o -> ior_i in pt
-    double r = ior_o / ior_i, d = dot(wo, normal);
-    return normalize(-r * (wo - d * normal) -
+  inline static Vec3 refraction_dir(const Vec3 &dir_prev, const Vec3 &normal,
+                                    const double ior_prev,
+                                    const double ior_next) {
+    double r = ior_prev / ior_next, d = dot(dir_prev, normal);
+    return normalize(-r * (dir_prev - d * normal) -
                      normal * std::sqrt(1. - r * r * (1. - d * d)));
   }
 
-  inline static double schlick_fresnel(const Vec3 &wo, const Vec3 &wi,
-                                       const Vec3 &normal, const double ior_o,
-                                       const double ior_i) {
-    double a = ior_o - ior_i, b = ior_o + ior_i;
+  inline static double schlick_fresnel(const Vec3 &dir_prev,
+                                       const Vec3 &dir_next, const Vec3 &normal,
+                                       const double ior_prev,
+                                       const double ior_next) {
+    double a = ior_prev - ior_next, b = ior_prev + ior_next;
     double f0 = (a * a) / (b * b);
-    double d = ior_o > ior_i ? fabs(dot(wi, normal)) : fabs(dot(wo, normal));
+    double d = ior_prev > ior_next ? fabs(dot(dir_next, normal))
+                                   : fabs(dot(dir_prev, normal));
     return f0 + (1. - f0) * pow(1. - d, 5);
   }
 
@@ -80,15 +84,16 @@ public:
   Lambertian(const Color &color) : color(color) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override {
+             const bool into, const IntegrateMode &mode) const override {
     return color * PI_INV;
   }
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override;
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override;
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override;
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override;
 
   bool is_specular() const override { return false; }
 
@@ -105,17 +110,18 @@ public:
   Mirror(const Color &color) : color(color) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override {
+             const bool into, const IntegrateMode &mode) const override {
     return color / fabs(dot(wi, normal));
   }
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override {
-    return reflection_dir(wo, normal);
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override {
+    return reflection_dir(dir_prev, normal);
   }
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override {
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override {
     return 1.; // Dirac-deita
   }
 
@@ -135,13 +141,14 @@ public:
   Glass(const Color &color, const double ior) : color(color), ior(ior) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override;
+             const bool into, const IntegrateMode &mode) const override;
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override;
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override;
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override;
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override;
 
   bool is_specular() const override { return true; }
 
@@ -161,16 +168,17 @@ public:
       : color(color), alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override;
+             const bool into, const IntegrateMode &mode) const override;
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override;
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override;
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override {
-    Vec3 wm = normalize(wi + wo);
-    return ggx_g1(wo, normal) * ggx_d(wm, normal) * 0.25 /
-           fabs(dot(wo, normal));
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override {
+    Vec3 wm = normalize(dir_next + dir_prev);
+    return ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
+           fabs(dot(dir_prev, normal));
   }
 
   bool is_specular() const override { return alpha < EPS; }
@@ -214,13 +222,14 @@ public:
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override;
+             const bool into, const IntegrateMode &mode) const override;
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override;
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override;
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override;
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override;
 
   bool is_specular() const override { return alpha < EPS; }
 
@@ -252,30 +261,31 @@ private:
     return 1. / (tmp1 * tmp2 * tmp2);
   }
 
-  double ggx_j(const Vec3 &wi, const Vec3 &wo, const Vec3 &wm,
+  double ggx_j(const Vec3 &dir_prev, const Vec3 &dir_next, const Vec3 &wm,
                const double r) const {
-    double denom = pow(dot(wo, wm) + dot(wi, wm) / r, 2) * r * r;
-    return fabs(dot(wo, wm)) / denom;
+    double denom = pow(dot(dir_next, wm) * r + dot(dir_prev, wm), 2);
+    return fabs(dot(dir_next, wm)) * r * r / denom;
   }
 
-  Vec3 get_half_vec(const Vec3 &wi, const Vec3 &wo, const double r) const {
-    return -1. * normalize(wi + r * wo);
+  Vec3 get_half_vec(const Vec3 &dir_prev, const Vec3 &dir_next,
+                    const double r) const {
+    return -1. * normalize(dir_prev + r * dir_next);
   }
 
-  double ggx_vndf(const Vec3 &wi, const Vec3 &wo, const Vec3 &wm,
+  double ggx_vndf(const Vec3 &dir_prev, const Vec3 &dir_next, const Vec3 &wm,
                   const Vec3 &normal) const {
-    return ggx_g1(wo, normal) * fabs(dot(wo, wm)) * ggx_d(wm, normal) /
-           fmax(fabs(dot(wo, normal)), EPS);
+    return ggx_g1(dir_prev, normal) * fabs(dot(dir_prev, wm)) *
+           ggx_d(wm, normal) / fmax(fabs(dot(dir_prev, normal)), EPS);
   }
 
-  Vec3 sample_vndf(const Vec3 &wo, const Vec3 &normal, const bool into,
+  Vec3 sample_vndf(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
                    Random *rnd) const {
     Vec3 w = normal;
     Vec3 u = fabs(w.x) > EPS ? normalize(cross(Vec3(0, 1, 0), w))
                              : normalize(cross(Vec3(1, 0, 0), w));
     Vec3 v = cross(w, u);
 
-    Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
+    Vec3 ve = Vec3(dot(u, dir_prev), dot(v, dir_prev), dot(normal, dir_prev));
     Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
 
     double phi = 2.0 * PI * rnd->gen();
@@ -289,7 +299,7 @@ private:
     Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
     Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
 
-    if (dot(reflection_dir(wo, wm), normal) > 0.) {
+    if (dot(reflection_dir(dir_prev, wm), normal) > 0.) {
       return wm;
     } else {
       return INVALID_VEC;
@@ -308,16 +318,17 @@ public:
         alpha_y(std::clamp(roughness_y * roughness_y, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override;
+             const bool into, const IntegrateMode &mode) const override;
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override;
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override;
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override {
-    Vec3 wm = normalize(wi + wo);
-    return ggx_g1(wo, normal) * ggx_d(wm, normal) * 0.25 /
-           fabs(dot(wo, normal));
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override {
+    Vec3 wm = normalize(dir_next + dir_prev);
+    return ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
+           fabs(dot(dir_prev, normal));
   }
 
   bool is_specular() const override { return alpha_x < EPS || alpha_y < EPS; }
@@ -397,13 +408,14 @@ public:
   }
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-             const bool into) const override;
+             const bool into, const IntegrateMode &mode) const override;
 
-  Vec3 sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-              Random *rnd) const override;
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override;
 
-  double sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const override;
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override;
 
   bool is_specular() const override { return false; }
 
@@ -442,13 +454,14 @@ private:
     return 1. / (tmp1 * tmp2 * tmp2);
   }
 
-  Vec3 sample_vndf(const Vec3 &wo, const Vec3 &normal, Random *rnd) const {
+  Vec3 sample_vndf(const Vec3 &dir_prev, const Vec3 &normal,
+                   Random *rnd) const {
     Vec3 w = normal;
     Vec3 u = fabs(w.x) > EPS ? normalize(cross(Vec3(0, 1, 0), w))
                              : normalize(cross(Vec3(1, 0, 0), w));
     Vec3 v = cross(w, u);
 
-    Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
+    Vec3 ve = Vec3(dot(u, dir_prev), dot(v, dir_prev), dot(normal, dir_prev));
     Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
 
     double phi = 2.0 * PI * rnd->gen();
@@ -462,7 +475,7 @@ private:
     Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
     Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
 
-    if (dot(reflection_dir(wo, wm), normal) > 0.) {
+    if (dot(reflection_dir(dir_prev, wm), normal) > 0.) {
       return wm;
     } else {
       return INVALID_VEC;

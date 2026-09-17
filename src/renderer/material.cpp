@@ -2,104 +2,127 @@
 #include "util/utils.h"
 #include <cmath>
 
-Vec3 Lambertian::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                        Random *rnd) const {
-  return sample_cosine_hemisphere(wo, normal, rnd);
+inline void get_ior(const double ior, double *ior_i, double *ior_o,
+                    double *ior_prev, double *ior_next, const bool into,
+                    const IntegrateMode &mode) {
+  if (into) {
+    *ior_prev = 1., *ior_next = ior;
+    if (mode == IntegrateMode::PT) {
+      *ior_i = ior, *ior_o = 1.;
+    } else {
+      *ior_i = 1., *ior_o = ior;
+    }
+  } else {
+    *ior_prev = ior, *ior_next = 1.;
+    if (mode == IntegrateMode::PT) {
+      *ior_i = 1., *ior_o = ior;
+    } else {
+      *ior_i = ior, *ior_o = 1.;
+    }
+  }
 }
 
-double Lambertian::sampling_pdf(const Vec3 &wo, const Vec3 &wi,
-                                const Vec3 &normal, const bool into) const {
-  return fmax(dot(wi, normal), EPS) * PI_INV;
+inline void get_ior(const double ior, double *ior_prev, double *ior_next,
+                    const bool into) {
+  if (into) {
+    *ior_prev = 1., *ior_next = ior;
+  } else {
+    *ior_prev = ior, *ior_next = ior;
+  }
+}
+
+Vec3 Lambertian::sample(const Vec3 &dir_prev, const Vec3 &normal,
+                        const bool into, Random *rnd,
+                        const IntegrateMode &mode) const {
+  return sample_cosine_hemisphere(normal, rnd);
+}
+
+double Lambertian::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                                const Vec3 &normal, const bool into,
+                                const IntegrateMode &mode) const {
+  return fmax(dot(dir_next, normal), EPS) * PI_INV;
 }
 
 Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                  const bool into) const {
-  double ior_o, ior_i;
-  if (into) {
-    ior_o = 1., ior_i = ior;
-  } else {
-    ior_o = ior, ior_i = 1.;
-  }
+                  const bool into, const IntegrateMode &mode) const {
+  double ior_o, ior_i, ior_prev, ior_next;
+  get_ior(ior, &ior_i, &ior_o, &ior_prev, &ior_next, into, mode);
 
-  double r = ior_o / ior_i;
+  double r_pn = ior_prev / ior_next, r_io = ior_o / ior_i;
+  double reflectance =
+      mode == IntegrateMode::PT
+          ? schlick_fresnel(wo, wi, normal, ior_prev, ior_next)
+          : schlick_fresnel(wi, wo, normal, ior_prev, ior_next);
 
   if (dot(wi, normal) < 0.) {
     // refract
-    double reflectance = schlick_fresnel(wo, wi, normal, ior_o, ior_i);
-    return r * r * color / fmax(-dot(wi, normal), EPS) * (1. - reflectance);
+    return r_io * r_io * color / fmax(-dot(wi, normal), EPS) *
+           (1. - reflectance);
   } else {
     // reflect
     double d = dot(wo, normal);
-    double reflectance = 1. - r * r * (1. - d * d) < 0.
-                             ? 1.
-                             : schlick_fresnel(wo, wi, normal, ior_o, ior_i);
+    reflectance = 1. - r_pn * r_pn * (1. - d * d) < 0. ? 1. : reflectance;
     return color / fmax(dot(wi, normal), EPS) * reflectance;
   }
 }
 
-Vec3 Glass::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                   Random *rnd) const {
-  double ior_o, ior_i;
-  if (into) {
-    ior_o = 1., ior_i = ior;
-  } else {
-    ior_o = ior, ior_i = 1.;
-  }
+Vec3 Glass::sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+                   Random *rnd, const IntegrateMode &mode) const {
+  double ior_prev, ior_next;
+  get_ior(ior, &ior_prev, &ior_next, into);
 
-  double r = ior_o / ior_i, d = dot(wo, normal);
+  double r = ior_prev / ior_next, d = dot(dir_prev, normal);
   if (1. - r * r * (1. - d * d) < 0.) {
-    return reflection_dir(wo, normal);
+    return reflection_dir(dir_prev, normal);
   }
 
-  Vec3 refraction_vec = refraction_dir(wo, normal, ior_o, ior_i);
+  Vec3 refraction_vec = refraction_dir(dir_prev, normal, ior_prev, ior_next);
   double reflectance =
-      schlick_fresnel(wo, refraction_vec, normal, ior_o, ior_i);
+      schlick_fresnel(dir_prev, refraction_vec, normal, ior_prev, ior_next);
 
   if (rnd->gen() < reflectance) {
-    return reflection_dir(wo, normal);
+    return reflection_dir(dir_prev, normal);
   } else {
     return refraction_vec;
   }
 }
 
-double Glass::sampling_pdf(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                           const bool into) const {
-  double ior_o, ior_i;
-  if (into) {
-    ior_o = 1., ior_i = ior;
-  } else {
-    ior_o = ior, ior_i = 1.;
-  }
+double Glass::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                           const Vec3 &normal, const bool into,
+                           const IntegrateMode &mode) const {
+  double ior_prev, ior_next;
+  get_ior(ior, &ior_prev, &ior_next, into);
 
-  double r = ior_o / ior_i, d = dot(wo, normal);
+  double r = ior_prev / ior_next, d = dot(dir_prev, normal);
 
   if (1. - r * r * (1. - d * d) < 0.) {
     return 1.;
   }
 
-  if (dot(wi, normal) < 0.) {
-    return 1. - schlick_fresnel(wo, wi, normal, ior_o, ior_i);
+  if (dot(dir_next, normal) < 0.) {
+    return 1. - schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
   } else {
-    return schlick_fresnel(wo, wi, normal, ior_o, ior_i);
+    return schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
   }
 }
 
 Color MicroBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const {
+                      const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
   Color fresnel = schlick_fresnel(color, wi, wm);
   return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
 }
 
-Vec3 MicroBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                       Random *rnd) const {
+Vec3 MicroBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
+                       const bool into, Random *rnd,
+                       const IntegrateMode &mode) const {
   Vec3 w = normal;
   Vec3 u = fabs(w.x) > EPS ? normalize(cross(Vec3(0, 1, 0), w))
                            : normalize(cross(Vec3(1, 0, 0), w));
   Vec3 v = cross(w, u);
 
-  Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
+  Vec3 ve = Vec3(dot(u, dir_prev), dot(v, dir_prev), dot(normal, dir_prev));
   Vec3 vh = normalize(Vec3(alpha * ve.x, alpha * ve.y, ve.z));
 
   double phi = 2.0 * PI * rnd->gen();
@@ -112,133 +135,137 @@ Vec3 MicroBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
 
   Vec3 wm_tmp = Vec3(alpha * h.x, alpha * h.y, h.z);
   Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
-  Vec3 wi = reflection_dir(wo, wm);
+  Vec3 dir_next = reflection_dir(dir_prev, wm);
 
-  if (dot(wi, normal) > 0.) {
-    return wi;
+  if (dot(dir_next, normal) > 0.) {
+    return dir_next;
   } else {
     return INVALID_VEC;
   }
 }
 
 Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                      const bool into) const {
-  double ior_o, ior_i;
-  if (into) {
-    ior_o = 1., ior_i = ior;
-  } else {
-    ior_o = ior, ior_i = 1.;
-  }
+                      const bool into, const IntegrateMode &mode) const {
+  double ior_o, ior_i, ior_prev, ior_next;
+  get_ior(ior, &ior_i, &ior_o, &ior_prev, &ior_next, into, mode);
 
-  double r = ior_o / ior_i;
+  double r_io = ior_o / ior_i, r_pn = ior_prev / ior_next;
 
   if (dot(wi, normal) < 0.) {
     // refract
-    Vec3 wm = get_half_vec(wi, wo, r);
-    double reflectance = schlick_fresnel(wo, wi, normal, ior_o, ior_i);
+    Vec3 wm = mode == IntegrateMode::PT ? get_half_vec(wo, wi, 1. / r_pn)
+                                        : get_half_vec(wi, wo, 1. / r_pn);
+
+    double reflectance =
+        mode == IntegrateMode::PT
+            ? schlick_fresnel(wo, wi, normal, ior_prev, ior_next)
+            : schlick_fresnel(wi, wo, normal, ior_prev, ior_next);
+
     double c = fabs(dot(wi, wm) * dot(wo, wm)) /
                fabs(dot(wi, normal) * dot(wo, normal));
-    double denom = fmax(pow(dot(wi, wm) + r * dot(wo, wm), 2), EPS);
+    double denom = fmax(pow(dot(wi, wm) + r_io * dot(wo, wm), 2), EPS);
 
     return c * (1 - reflectance) * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) *
-           r * r / denom;
+           r_io * r_io / denom;
   } else {
     // reflect
     Vec3 wm = normalize(wi + wo);
+    double reflectance =
+        mode == IntegrateMode::PT
+            ? schlick_fresnel(wo, wi, normal, ior_prev, ior_next)
+            : schlick_fresnel(wi, wo, normal, ior_prev, ior_next);
+
     double d = dot(wo, wm);
-    double reflectance = 1. - r * r * (1. - d * d) < 0.
-                             ? 1.
-                             : schlick_fresnel(wo, wi, wm, ior_o, ior_i);
+    reflectance = 1. - r_pn * r_pn * (1. - d * d) < 0. ? 1. : reflectance;
 
     double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
     return reflectance * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
   }
 }
 
-double MicroBtdf::sampling_pdf(const Vec3 &wo, const Vec3 &wi,
-                               const Vec3 &normal, const bool into) const {
-  double ior_o, ior_i;
-  if (into) {
-    ior_o = 1., ior_i = ior;
-  } else {
-    ior_o = ior, ior_i = 1.;
-  }
+double MicroBtdf::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                               const Vec3 &normal, const bool into,
+                               const IntegrateMode &mode) const {
+  double ior_prev, ior_next;
+  get_ior(ior, &ior_prev, &ior_next, into);
 
-  double r = ior_o / ior_i;
+  double r = ior_prev / ior_next;
 
-  if (dot(wi, normal) < 0.) {
+  if (dot(dir_next, normal) < 0.) {
     // refract
-    Vec3 wm = get_half_vec(wi, wo, r);
-    double d = dot(wo, wm);
+    Vec3 wm = get_half_vec(dir_prev, dir_next, 1. / r);
+    double d = dot(dir_prev, wm);
 
     if (1. - r * r * (1. - d * d) < 0.) {
       return 0.;
     } else {
-      return (1. - schlick_fresnel(wo, wi, wm, ior_o, ior_i)) *
-             ggx_vndf(wi, wo, wm, normal) * ggx_j(wi, wo, wm, r);
+      return (1. -
+              schlick_fresnel(dir_prev, dir_next, wm, ior_prev, ior_next)) *
+             ggx_vndf(dir_prev, dir_next, wm, normal) *
+             ggx_j(dir_prev, dir_next, wm, 1. / r);
     }
   } else {
     // reflect
-    Vec3 wm = normalize(wi + wo);
-    double d = dot(wo, wm);
+    Vec3 wm = normalize(dir_next + dir_prev);
+    double d = dot(dir_prev, wm);
 
     if (1. - r * r * (1. - d * d) < 0.) {
-      return ggx_g1(wo, normal) * ggx_d(wm, normal) * 0.25 /
-             fabs(dot(wo, normal));
+      return ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
+             fabs(dot(dir_prev, normal));
     } else {
-      return schlick_fresnel(wo, wi, wm, ior_o, ior_i) * ggx_g1(wo, normal) *
-             ggx_d(wm, normal) * 0.25 / fabs(dot(wo, normal));
+      return schlick_fresnel(dir_prev, dir_next, wm, ior_prev, ior_next) *
+             ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
+             fabs(dot(dir_prev, normal));
     }
   }
 }
 
-Vec3 MicroBtdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                       Random *rnd) const {
-  double ior_o, ior_i;
-  if (into) {
-    ior_o = 1., ior_i = ior;
-  } else {
-    ior_o = ior, ior_i = 1.;
-  }
+Vec3 MicroBtdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
+                       const bool into, Random *rnd,
+                       const IntegrateMode &mode) const {
+  double ior_prev, ior_next;
+  get_ior(ior, &ior_prev, &ior_next, into);
 
-  double r = ior_o / ior_i;
-  Vec3 wm = sample_vndf(wo, normal, into, rnd);
+  double r = ior_prev / ior_next;
+  Vec3 wm = sample_vndf(dir_prev, normal, into, rnd);
 
   if (wm == INVALID_VEC) {
     return INVALID_VEC;
   }
 
-  double d = dot(wo, wm);
+  double d = dot(dir_prev, wm);
   if (1. - r * r * (1. - d * d) < 0.) {
-    return reflection_dir(wo, wm);
+    return reflection_dir(dir_prev, wm);
   }
 
-  Vec3 refraction_vec = refraction_dir(wo, wm, ior_o, ior_i);
-  double reflectance = schlick_fresnel(wo, refraction_vec, wm, ior_o, ior_i);
+  Vec3 refraction_vec = refraction_dir(dir_prev, wm, ior_prev, ior_next);
+  double reflectance =
+      schlick_fresnel(dir_prev, refraction_vec, wm, ior_prev, ior_next);
 
   if (rnd->gen() < reflectance) {
-    return reflection_dir(wo, wm);
+    return reflection_dir(dir_prev, wm);
   } else {
     return refraction_vec;
   }
 }
 
 Color MicroBrdfAniso::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                           const bool into) const {
+                           const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
   Color fresnel = schlick_fresnel(color, wi, wm);
   return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
 }
 
-Vec3 MicroBrdfAniso::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                            Random *rnd) const {
+Vec3 MicroBrdfAniso::sample(const Vec3 &dir_prev, const Vec3 &normal,
+                            const bool into, Random *rnd,
+                            const IntegrateMode &mode) const {
   Vec3 w = normal;
   Vec3 u = fabs(w.x) > EPS ? normalize(cross(Vec3(0, 1, 0), w))
                            : normalize(cross(Vec3(1, 0, 0), w));
   Vec3 v = cross(w, u);
 
-  Vec3 ve = Vec3(dot(u, wo), dot(v, wo), dot(normal, wo));
+  Vec3 ve = Vec3(dot(u, dir_prev), dot(v, dir_prev), dot(normal, dir_prev));
   Vec3 vh = normalize(Vec3(alpha_x * ve.x, alpha_y * ve.y, ve.z));
 
   double phi = 2.0 * PI * rnd->gen();
@@ -251,7 +278,7 @@ Vec3 MicroBrdfAniso::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
 
   Vec3 wm_tmp = Vec3(alpha_x * h.x, alpha_y * h.y, h.z);
   Vec3 wm = normalize(u * wm_tmp.x + v * wm_tmp.y + w * wm_tmp.z);
-  Vec3 wi = reflection_dir(wo, wm);
+  Vec3 wi = reflection_dir(dir_prev, wm);
 
   if (dot(wi, normal) > 0.) {
     return wi;
@@ -261,7 +288,7 @@ Vec3 MicroBrdfAniso::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
 }
 
 Color MixtureBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                        const bool into) const {
+                        const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
   Color fresnel = fresnel_gaussian(fs0(), wi, wm);
@@ -272,22 +299,24 @@ Color MixtureBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
   return (1. - metalic) * f_diff + f_spec;
 }
 
-Vec3 MixtureBrdf::sample(const Vec3 &wo, const Vec3 &normal, const bool into,
-                         Random *rnd) const {
+Vec3 MixtureBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
+                         const bool into, Random *rnd,
+                         const IntegrateMode &mode) const {
   if (sample_diffuse(rnd)) {
-    return sample_cosine_hemisphere(wo, normal, rnd);
+    return sample_cosine_hemisphere(normal, rnd);
   } else {
-    Vec3 wm = sample_vndf(wo, normal, rnd);
-    return wm == INVALID_VEC ? wm : reflection_dir(wo, wm);
+    Vec3 wm = sample_vndf(dir_prev, normal, rnd);
+    return wm == INVALID_VEC ? wm : reflection_dir(dir_prev, wm);
   }
 }
 
-double MixtureBrdf::sampling_pdf(const Vec3 &wo, const Vec3 &wi,
-                                 const Vec3 &normal, const bool into) const {
-  Vec3 wm = normalize(wi + wo);
-  double pdf_spec =
-      ggx_g1(wo, normal) * ggx_d(wm, normal) * 0.25 / fabs(dot(wo, normal));
-  double pdf_diff = fmax(dot(wi, normal), EPS) * PI_INV;
+double MixtureBrdf::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                                 const Vec3 &normal, const bool into,
+                                 const IntegrateMode &mode) const {
+  Vec3 wm = normalize(dir_next + dir_prev);
+  double pdf_spec = ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
+                    fabs(dot(dir_prev, normal));
+  double pdf_diff = fmax(dot(dir_next, normal), EPS) * PI_INV;
 
   return diffuse_prob * pdf_diff + (1. - diffuse_prob) * pdf_spec;
 }
