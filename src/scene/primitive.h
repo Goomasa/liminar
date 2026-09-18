@@ -45,11 +45,17 @@ public:
     r = Vertex(vr, geometry_normal);
   }
 
-  Triangle(const Vertex &p, const Vertex &q, const Vertex &r)
-      : p(p), q(q), r(r) {
-    Vec3 pq = q.position - p.position;
-    Vec3 pr = r.position - p.position;
+  Triangle(const Vertex &vp, const Vertex &vq, const Vertex &vr)
+      : p(vp), q(vq), r(vr) {
+    Vec3 pq = vq.position - vp.position;
+    Vec3 pr = vr.position - vp.position;
     geometry_normal = normalize(cross(pq, pr));
+
+    if (vp.normal.is_nan() || vq.normal.is_nan() || vr.normal.is_nan()) {
+      p.normal = geometry_normal;
+      q.normal = geometry_normal;
+      r.normal = geometry_normal;
+    }
   }
 
   AABB get_bbox() const override {

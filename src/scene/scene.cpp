@@ -56,7 +56,18 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
         const double ny = (double)obj_attrib.normals[3 * idx.normal_index + 1];
         const double nz = (double)obj_attrib.normals[3 * idx.normal_index + 2];
 
-        vertices[v] = Vertex(Point3(vx, vy, vz) * scale + tr, Vec3(nx, ny, nz));
+        if (idx.texcoord_index != -1) {
+          const double tu =
+              (double)obj_attrib.texcoords[3 * idx.texcoord_index + 0];
+          const double tv =
+              (double)obj_attrib.texcoords[3 * idx.texcoord_index + 1];
+
+          vertices[v] = Vertex(Point3(vx, vy, vz) * scale + tr,
+                               Vec3(nx, ny, nz), Vec2(tu, tv));
+        } else {
+          vertices[v] =
+              Vertex(Point3(vx, vy, vz) * scale + tr, Vec3(nx, ny, nz));
+        }
       }
 
       offset += 3;
@@ -143,6 +154,10 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
     auto ns = material.shininess / 1000;
     const double ior = material.ior;
     bxdf = std::make_unique<MicroBtdf>(kd, ior, ns);
+  } break;
+  case 11: {
+    auto ns = material.shininess / 1000;
+    bxdf = std::make_unique<MixtureBrdf>(kd, 0., ns);
   } break;
   }
 
@@ -272,7 +287,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                           (double)tmp_normals[2]);
 
             v = transform(v, transform_mat) * scale + tr;
-            n = normalize(transform(n, transform_mat));
+            n = normalize(
+                transform(n, get_normal_transform_mat(transform_mat)));
             triangle_verts.emplace_back(Vertex(v, n));
           }
         }
@@ -341,7 +357,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                           (double)tmp_normals[2]);
 
             v = transform(v, transform_mat) * scale + tr;
-            n = normalize(transform(n, transform_mat));
+            n = normalize(
+                transform(n, get_normal_transform_mat(transform_mat)));
             triangle_verts.emplace_back(Vertex(v, n));
           }
         }
@@ -384,6 +401,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
   tg3_model_free(&tg_model);
   tg3_error_stack_free(&tg_errors);
+
+  std::cout << "loaded: " << filename << std::endl;
 }
 
 /* --- */
@@ -414,7 +433,8 @@ void Scene::set_test_primitive() {
   //     std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(0, 25, 0), 15);
-  std::unique_ptr<Bxdf> bxdf = std::make_unique<MicroBtdf>(Color(1.), 1.5, 0.4);
+  std::unique_ptr<Bxdf> bxdf =
+      std::make_unique<MixtureBrdf>(Color(1.), 0., 0.1);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   // primitives.emplace_back(std::move(prim));
   // shapes.emplace_back(std::move(sphere));

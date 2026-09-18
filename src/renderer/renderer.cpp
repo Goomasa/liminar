@@ -144,6 +144,7 @@ void Renderer::set_scene(ObjectNode &node) {
   scene->primitives.shrink_to_fit();
   scene->bxdfs.shrink_to_fit();
   scene->shapes.shrink_to_fit();
+  scene->textures.shrink_to_fit();
 
   std::cout << "size of primitives: " << scene->primitives.size() << std::endl;
   std::cout << "size of bxdfs: " << scene->bxdfs.size() << std::endl;

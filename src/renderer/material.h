@@ -505,7 +505,7 @@ private:
 
   Color fs0() const {
     double t = 0.08 * specular;
-    return base_color * (1. - t) + Vec3(metalic) * t;
+    return metalic * base_color + (1. - metalic) * Vec3(t);
   }
 
   Color get_color(const Vec2 &uv) const {

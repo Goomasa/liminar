@@ -16,6 +16,7 @@
 struct Scene {
   std::vector<std::unique_ptr<Bxdf>> bxdfs;
   std::vector<std::unique_ptr<Shape>> shapes;
+  std::vector<std::unique_ptr<Texture>> textures;
   std::vector<Primitive> primitives;
   std::vector<uint32_t> lights;
   std::unique_ptr<Texture> background;

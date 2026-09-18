@@ -78,3 +78,5 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
 Mat4 get_node_transform_mat(const tg3_node &node);
 
 Mat4 get_transform_mat(const tg3_model &tg_model, const uint32_t node_idx);
+
+Mat4 get_normal_transform_mat(const Mat4 &m);

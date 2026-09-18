@@ -292,7 +292,7 @@ Color MixtureBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
   Color f_diff = get_color(uv) * PI_INV;
 
-  return (1. - metalic) * f_diff + f_spec;
+  return (1. - metalic) * (Vec3(1.) - fresnel) * f_diff + f_spec;
 }
 
 Vec3 MixtureBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,

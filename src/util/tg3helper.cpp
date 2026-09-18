@@ -85,3 +85,34 @@ Mat4 get_transform_mat(const tg3_model &tg_model, const uint32_t node_idx) {
 
   return m;
 }
+
+Mat4 get_normal_transform_mat(const Mat4 &m) {
+  // m[0-3,0-3] (-1)(T)
+  double a = m.e[0][0], b = m.e[0][1], c = m.e[0][2];
+  double d = m.e[1][0], e = m.e[1][1], f = m.e[1][2];
+
+  double g = m.e[2][0], h = m.e[2][1], i = m.e[2][2];
+
+  double det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+
+  if (std::abs(det) < EPS) {
+    return m;
+  }
+
+  double invDet = 1.0 / det;
+  Mat4 inv = Mat4();
+
+  inv.e[0][0] = (e * i - f * h) * invDet;
+  inv.e[0][1] = (c * h - b * i) * invDet;
+  inv.e[0][2] = (b * f - c * e) * invDet;
+
+  inv.e[1][0] = (f * g - d * i) * invDet;
+  inv.e[1][1] = (a * i - c * g) * invDet;
+  inv.e[1][2] = (c * d - a * f) * invDet;
+
+  inv.e[2][0] = (d * h - e * g) * invDet;
+  inv.e[2][1] = (b * g - a * h) * invDet;
+  inv.e[2][2] = (a * e - b * d) * invDet;
+
+  return inv.transpose();
+}
