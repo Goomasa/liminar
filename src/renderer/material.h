@@ -1,5 +1,6 @@
 #pragma once
 
+#include "scene/texture.h"
 #include "util/random.h"
 #include "util/utils.h"
 #include <algorithm>
@@ -12,8 +13,9 @@ public:
   uint64_t id;
 
   virtual ~Bxdf() = default;
-  virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
-                     const bool into, const IntegrateMode &mode) const = 0;
+  virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
+                     const Vec3 &normal, const bool into,
+                     const IntegrateMode &mode) const = 0;
   virtual Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
                       Random *rnd, const IntegrateMode &mode) const = 0;
   virtual double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
@@ -85,13 +87,15 @@ protected:
 
 class Lambertian : public Bxdf {
 public:
-  Color color; // wip: use texture
+  Color color;
+  Texture *texture;
 
-  Lambertian(const Color &color) : color(color) {}
+  Lambertian(const Color &color, Texture *texture = nullptr)
+      : color(color), texture(texture) {}
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override {
-    return color * PI_INV;
+    return get_color(uv) * PI_INV;
   }
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -107,6 +111,15 @@ public:
     std::cout << "Lambertian, color: ";
     color.display();
   }
+
+private:
+  Color get_color(const Vec2 &uv) const {
+    if (!texture) {
+      return color;
+    } else {
+      return texture->get_color(uv);
+    }
+  }
 };
 
 class Mirror : public Bxdf {
@@ -115,7 +128,7 @@ public:
 
   Mirror(const Color &color) : color(color) {}
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override {
     return color / fabs(dot(wi, normal));
   }
@@ -146,7 +159,7 @@ public:
 
   Glass(const Color &color, const double ior) : color(color), ior(ior) {}
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -173,7 +186,7 @@ public:
   MicroBrdf(const Color &color, const double roughness)
       : color(color), alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -227,7 +240,7 @@ public:
       : color(color), ior(ior),
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -323,7 +336,7 @@ public:
       : color(color), alpha_x(std::clamp(roughness_x * roughness_x, 0.001, 1.)),
         alpha_y(std::clamp(roughness_y * roughness_y, 0.001, 1.)) {}
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -399,21 +412,23 @@ class MixtureBrdf : public Bxdf {
 public:
   Color base_color;
   double metalic, specular, alpha;
+  Texture *texture;
 
   MixtureBrdf(const Color &color, const double metalic, const double specular,
-              const double roughness)
+              const double roughness, Texture *texture = nullptr)
       : base_color(color), metalic(metalic), specular(specular),
-        alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)), texture(texture) {
     diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
-  MixtureBrdf(const Color &color, const double metalic, const double roughness)
+  MixtureBrdf(const Color &color, const double metalic, const double roughness,
+              Texture *texture = nullptr)
       : base_color(color), metalic(metalic), specular(0.5),
-        alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)), texture(texture) {
     diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
-  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec3 &normal,
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const bool into, const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -491,5 +506,13 @@ private:
   Color fs0() const {
     double t = 0.08 * specular;
     return base_color * (1. - t) + Vec3(metalic) * t;
+  }
+
+  Color get_color(const Vec2 &uv) const {
+    if (!texture) {
+      return base_color;
+    } else {
+      return texture->get_color(uv);
+    }
   }
 };

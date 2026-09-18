@@ -59,9 +59,10 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     }
 
     now_ray = Ray(record.hitpoint, wi, record.id);
-    throughput = throughput *
-                 prim->bxdf->eval(wo, wi, orienting_normal, into, mode) *
-                 fabs(dot(wi, orienting_normal));
+    throughput =
+        throughput *
+        prim->bxdf->eval(wo, wi, record.uv, orienting_normal, into, mode) *
+        fabs(dot(wi, orienting_normal));
     pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
   }
 }
@@ -256,7 +257,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 
         Color tmp_throughput =
             throughput *
-            prim->bxdf->eval(wo, to_light_norm, orienting_normal, into, mode) *
+            prim->bxdf->eval(wo, to_light_norm, test_record.uv,
+                             orienting_normal, into, mode) *
             fabs(dot(to_light_norm, orienting_normal));
         value = value + light->emission * (tmp_throughput * mis_weight /
                                            (pdf * pdf_sample_light));
@@ -269,9 +271,10 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     }
 
     now_ray = Ray(record.hitpoint, wi, record.id);
-    throughput = throughput *
-                 prim->bxdf->eval(wo, wi, orienting_normal, into, mode) *
-                 fabs(dot(wi, orienting_normal));
+    throughput =
+        throughput *
+        prim->bxdf->eval(wo, wi, record.uv, orienting_normal, into, mode) *
+        fabs(dot(wi, orienting_normal));
     prev_pdf_bxdf =
         prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
     pdf *= prev_pdf_bxdf;

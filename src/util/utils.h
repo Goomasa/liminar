@@ -50,6 +50,8 @@ struct Vec2 {
   inline double min() const { return fmin(u, v); }
 };
 
+inline Vec2 operator*(const double d, const Vec2 &v) { return v * d; }
+
 struct Vec3 {
   double x, y, z;
 

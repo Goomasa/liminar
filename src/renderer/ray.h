@@ -16,10 +16,12 @@ struct HitRecord {
   double distance;
   Point3 hitpoint;
   Vec3 normal;
+  Vec2 uv;
   uint32_t id;
 
   HitRecord(const double d = INF)
-      : distance(d), hitpoint(Point3()), normal(Vec3()), id(-1) {}
+      : distance(d), hitpoint(Point3()), normal(Vec3()), uv(Vec2(0.5)), id(-1) {
+  }
 
   void reset(const double d = INF) {
     distance = d;

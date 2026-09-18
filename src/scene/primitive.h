@@ -82,7 +82,7 @@ public:
     return normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, pos));
   }
 
-  Vec2 get_uv(const Point3 &pos) const override {
+  Vec2 get_geometry_uv(const Point3 &pos) const {
     Vec3 p_pos = pos - p.position;
     Vec3 pq = q.position - p.position;
     Vec3 pr = r.position - p.position;
@@ -94,10 +94,16 @@ public:
     return Vec2(u, v);
   }
 
+  Vec2 get_uv(const Point3 &pos) const override {
+    // todo: normal map
+    Vec2 geom_uv = get_geometry_uv(pos);
+    return tlerp<Vec2>(p.uv, q.uv, r.uv, geom_uv);
+  }
+
 private:
   template <typename T>
   inline T tlerp(const T pv, const T qv, const T rv, const Point3 &pos) const {
-    Vec2 uv = get_uv(pos);
+    Vec2 uv = get_geometry_uv(pos);
     return (1 - uv.u - uv.v) * pv + uv.u * qv + uv.v * rv;
   }
 
@@ -138,7 +144,10 @@ public:
     return normalize(pos - center);
   }
 
-  Vec2 get_uv(const Vec3 &pos) const override { return Vec2(0.5); }
+  Vec2 get_uv(const Vec3 &pos) const override {
+    // wip
+    return Vec2(0.5);
+  }
 };
 
 class Cylinder : public Shape {
