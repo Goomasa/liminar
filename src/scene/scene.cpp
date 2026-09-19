@@ -197,6 +197,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
     std::cout << "nodes: " << tg_model.nodes_count << std::endl;
   }
 
+  uint32_t primitive_id = 0;
+
   for (uint32_t node_i = 0; node_i < tg_model.nodes_count; node_i++) {
     const tg3_node &tg_node = tg_model.nodes[node_i];
     if (tg_node.mesh == TG3_INDEX_NONE) {
@@ -206,6 +208,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
     const tg3_mesh &tg_mesh = tg_model.meshes[tg_node.mesh];
 
     for (uint32_t prim_i = 0; prim_i < tg_mesh.primitives_count; prim_i++) {
+      primitive_id++;
+
       const tg3_primitive &tg_prim = tg_mesh.primitives[prim_i];
       const int32_t mode =
           tg_prim.mode == TG3_INDEX_NONE ? TG3_MODE_TRIANGLES : tg_prim.mode;
@@ -269,7 +273,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
           find_attrib_accessor(tg_prim, "TEXCOORD_0");
       bool has_texcoord_0 = texcoord_accessor_idx != TG3_INDEX_NONE;
 
-      // undefined behavior
+      // undefined behavior if has_texcoord_0=false
       const tg3_accessor &tg_texcoords =
           tg_model.accessors[texcoord_accessor_idx];
       if (has_texcoord_0 &&
@@ -421,9 +425,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
         Primitive prim = Primitive(shape.get(), primitives.size());
 
-        uint64_t hashed_id = std::hash<std::string>()(
-            filename +
-            std::to_string(tg_mesh.primitives_count * node_i + prim_i));
+        uint64_t hashed_id =
+            std::hash<std::string>()(filename + std::to_string(primitive_id));
         auto corresponding_bxdf = search_bxdf(hashed_id);
 
         if (corresponding_bxdf) {

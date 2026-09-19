@@ -50,6 +50,32 @@ bool get_image_buffer_data(const tg3_buffer_view &tex_buffer_view,
   return true;
 }
 
+inline void get_texcoord_sampler(const tg3_model &tg_model,
+                                 const tg3_texture &tg_tex,
+                                 TexcoordSampler *sampler_u,
+                                 TexcoordSampler *sampler_v) {
+  int32_t sampler_idx = tg_tex.sampler;
+  if (sampler_idx == TG3_INDEX_NONE || sampler_idx >= tg_model.samplers_count) {
+    *sampler_u = TexcoordSampler::REPEAT;
+    *sampler_v = TexcoordSampler::REPEAT;
+  }
+
+  const tg3_sampler &tg_sampler = tg_model.samplers[sampler_idx];
+
+  auto to_sampler = [](int32_t key) -> TexcoordSampler {
+    if (key == 33648) {
+      return TexcoordSampler::MIRRORED_REPEAT;
+    } else if (key == 33071) {
+      return TexcoordSampler::CLAMP_TO_EDGE;
+    } else {
+      return TexcoordSampler::REPEAT;
+    }
+  };
+
+  *sampler_u = to_sampler(tg_sampler.wrap_s);
+  *sampler_v = to_sampler(tg_sampler.wrap_t);
+}
+
 void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
                        std::unique_ptr<Texture> *texture) {
   int32_t tex_idx = tg_mat.pbr_metallic_roughness.base_color_texture.index;
@@ -68,6 +94,9 @@ void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
   int32_t channels = tg_image.component >= 0 ? tg_image.component : 3;
   const unsigned char *data = tg_image.image.data;
 
+  TexcoordSampler sampler_u, sampler_v;
+  get_texcoord_sampler(tg_model, tg_texture, &sampler_u, &sampler_v);
+
   if (data) {
     std::vector<TexColor3f> pixels(width * height);
 
@@ -82,7 +111,8 @@ void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
       }
     }
 
-    *texture = std::move(std::make_unique<ImageTexture>(pixels, width, height));
+    *texture = std::move(std::make_unique<ImageTexture>(pixels, width, height,
+                                                        sampler_u, sampler_v));
   } else {
     int32_t tex_buffer_view_idx = tg_image.buffer_view;
     if (tex_buffer_view_idx == TG3_INDEX_NONE) {
@@ -102,8 +132,8 @@ void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
 
     auto pixels = load_image(data, size, &width, &height);
     if (pixels.has_value()) {
-      *texture = std::move(
-          std::make_unique<ImageTexture>(pixels.value(), width, height));
+      *texture = std::move(std::make_unique<ImageTexture>(
+          pixels.value(), width, height, sampler_u, sampler_v));
     }
   }
 }
@@ -156,7 +186,7 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
     }
   }
 
-  bxdf->get()->display();
+  // bxdf->get()->display();
 }
 
 Mat4 get_node_transform_mat(const tg3_node &node) {

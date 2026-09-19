@@ -173,8 +173,8 @@ Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
                fabs(dot(wi, normal) * dot(wo, normal));
     double denom = fmax(pow(dot(wi, wm) + r_io * dot(wo, wm), 2), EPS);
 
-    return c * (1 - reflectance) * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) *
-           r_io * r_io / denom;
+    return color * c * (1 - reflectance) * ggx_g2(wi, wo, normal) *
+           ggx_d(wm, normal) * r_io * r_io / denom;
   } else {
     // reflect
     Vec3 wm = normalize(wi + wo);
@@ -185,7 +185,8 @@ Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
     reflectance = is_refract ? reflectance : 1.;
 
     double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
-    return reflectance * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+    return color * reflectance * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) /
+           denom;
   }
 }
 
