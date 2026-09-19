@@ -22,6 +22,7 @@ set_target_properties(tinygltf_v3 PROPERTIES
 
 target_compile_definitions(tinygltf_v3 PRIVATE
     TINYGLTF3_ENABLE_FS
+    TINYGLTF3_ENABLE_STB_IMAGE
 )
 
 add_subdirectory(src)

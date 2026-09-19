@@ -100,6 +100,15 @@ private:
     return nullptr;
   }
 
+  inline std::unique_ptr<Texture> *search_texture(const uint64_t key) {
+    for (auto &tex : textures) {
+      if (tex->id == key) {
+        return &tex;
+      }
+    }
+    return nullptr;
+  }
+
   void set_test_primitive();
 
   void set_sample_scene1();

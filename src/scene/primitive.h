@@ -30,7 +30,7 @@ public:
   virtual double pdf_sample_surface_area() const = 0;
   virtual Point3 sample_surface(Random *rnd, double *pdf) const = 0;
   virtual Vec3 get_normal(const Point3 &pos) const = 0;
-  virtual Vec2 get_uv(const Point3 &pos) const = 0;
+  virtual Vec2 get_texcoord(const Point3 &pos) const = 0;
 };
 
 class Triangle : public Shape {
@@ -100,7 +100,7 @@ public:
     return Vec2(u, v);
   }
 
-  Vec2 get_uv(const Point3 &pos) const override {
+  Vec2 get_texcoord(const Point3 &pos) const override {
     // todo: normal map
     Vec2 geom_uv = get_geometry_uv(pos);
     return tlerp<Vec2>(p.uv, q.uv, r.uv, geom_uv);
@@ -150,7 +150,7 @@ public:
     return normalize(pos - center);
   }
 
-  Vec2 get_uv(const Vec3 &pos) const override {
+  Vec2 get_texcoord(const Vec3 &pos) const override {
     // wip
     return Vec2(0.5);
   }
@@ -193,7 +193,7 @@ public:
     return normalize(pos - bottom - k * dir);
   }
 
-  Vec2 get_uv(const Vec3 &pos) const override { return Vec2(0.5); }
+  Vec2 get_texcoord(const Vec3 &pos) const override { return Vec2(0.5); }
 };
 
 class Disk : public Shape {
@@ -223,7 +223,7 @@ public:
 
   Vec3 get_normal(const Point3 &pos) const override { return normal; }
 
-  Vec2 get_uv(const Vec3 &pos) const override { return Vec2(0.5); }
+  Vec2 get_texcoord(const Vec3 &pos) const override { return Vec2(0.5); }
 };
 
 class Primitive {

@@ -1,10 +1,14 @@
 #pragma once
 
 #include "util/utils.h"
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <optional>
 #include <string>
 #include <vector>
+
+constexpr float UINT8_INV = 1. / 255;
 
 inline bool is_valid(const Vec3 &v) { return !v.is_nan() && (v.min() >= 0.); }
 
@@ -34,5 +38,10 @@ inline void save_ppm(const std::string &filename,
 
 std::optional<std::vector<TexColor3f>>
 load_image(const std::string &filename, uint32_t *width, uint32_t *height);
+
+std::optional<std::vector<TexColor3f>> load_image(const uint8_t *buffer,
+                                                  const size_t size,
+                                                  uint32_t *width,
+                                                  uint32_t *height);
 
 void test_load_image(const std::string &filename);

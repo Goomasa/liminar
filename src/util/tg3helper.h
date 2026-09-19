@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/material.h"
+#include "scene/texture.h"
 #include "tiny_gltf_v3.h"
 #include "util/utils.h"
 #include <cstdint>
@@ -73,10 +74,14 @@ inline Color load_gltf_emission(const tg3_model &tg_model,
 }
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
-                        std::unique_ptr<Bxdf> *bxdf, Color *emission);
+                        std::unique_ptr<Bxdf> *bxdf, Color *emission,
+                        std::unique_ptr<Texture> *texture);
 
 Mat4 get_node_transform_mat(const tg3_node &node);
 
 Mat4 get_transform_mat(const tg3_model &tg_model, const uint32_t node_idx);
 
 Mat4 get_normal_transform_mat(const Mat4 &m);
+
+void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
+                       std::unique_ptr<Texture> *tex);

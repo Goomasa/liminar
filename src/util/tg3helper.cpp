@@ -1,9 +1,12 @@
 #include "tg3helper.h"
 #include "renderer/material.h"
+#include "scene/texture.h"
 #include "tiny_gltf_v3.h"
+#include "util/image.h"
 #include "util/utils.h"
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 inline bool is_transparent(const tg3_material &tg_mat, double *ior) {
   constexpr std::string KHR_EXT_NAME = "KHR_materials_ior";
@@ -27,8 +30,87 @@ inline bool is_transparent(const tg3_material &tg_mat, double *ior) {
   return *ior > 1.;
 }
 
+bool get_image_buffer_data(const tg3_buffer_view &tex_buffer_view,
+                           const tg3_buffer &tg_buffer, const uint8_t *&data,
+                           size_t &size) {
+  const size_t offset = static_cast<size_t>(tex_buffer_view.byte_offset);
+  const size_t length = static_cast<size_t>(tex_buffer_view.byte_length);
+
+  if (offset > tg_buffer.data.count) {
+    return false;
+  }
+
+  if (length > tg_buffer.data.count - offset) {
+    return false;
+  }
+
+  data = reinterpret_cast<const uint8_t *>(tg_buffer.data.data) + offset;
+  size = length;
+
+  return true;
+}
+
+void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
+                       std::unique_ptr<Texture> *texture) {
+  int32_t tex_idx = tg_mat.pbr_metallic_roughness.base_color_texture.index;
+  if (tex_idx < 0 || tex_idx >= tg_model.textures_count) {
+    return;
+  }
+
+  const tg3_texture &tg_texture = tg_model.textures[tex_idx];
+
+  if (tg_texture.source < 0 && tg_texture.source >= tg_model.images_count) {
+    return;
+  }
+
+  const tg3_image &tg_image = tg_model.images[tg_texture.source];
+  uint32_t width = tg_image.width, height = tg_image.height;
+  int32_t channels = tg_image.component >= 0 ? tg_image.component : 3;
+  const unsigned char *data = tg_image.image.data;
+
+  if (data) {
+    std::vector<TexColor3f> pixels(width * height);
+
+    for (uint32_t h = 0; h < height; h++) {
+      for (uint32_t w = 0; w < width; w++) {
+        uint64_t idx = (h * width + w) * channels;
+        float r = tg_image.image.data[idx] * UINT8_INV;
+        float g = tg_image.image.data[idx + 1] * UINT8_INV;
+        float b = tg_image.image.data[idx + 2] * UINT8_INV;
+
+        pixels[h * width + w] = TexColor3f(r, g, b);
+      }
+    }
+
+    *texture = std::move(std::make_unique<ImageTexture>(pixels, width, height));
+  } else {
+    int32_t tex_buffer_view_idx = tg_image.buffer_view;
+    if (tex_buffer_view_idx == TG3_INDEX_NONE) {
+      return;
+    }
+
+    const tg3_buffer_view &tex_buffer_view =
+        tg_model.buffer_views[tex_buffer_view_idx];
+    const tg3_buffer &tg_buffer = tg_model.buffers[tex_buffer_view.buffer];
+
+    const uint8_t *data = nullptr;
+    size_t size = 0;
+
+    if (!get_image_buffer_data(tex_buffer_view, tg_buffer, data, size)) {
+      return;
+    }
+
+    auto pixels = load_image(data, size, &width, &height);
+    if (pixels.has_value()) {
+      *texture = std::move(
+          std::make_unique<ImageTexture>(pixels.value(), width, height));
+    }
+  }
+}
+
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
-                        std::unique_ptr<Bxdf> *bxdf, Color *emission) {
+                        std::unique_ptr<Bxdf> *bxdf, Color *emission,
+                        std::unique_ptr<Texture> *texture) {
   if (tg_prim.material < 0 || tg_prim.material >= tg_model.materials_count) {
     *bxdf = std::move(std::make_unique<Lambertian>(Color(1.)));
     *emission = Color();
@@ -59,15 +141,18 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
           std::move(std::make_unique<MicroBtdf>(base_color, ior, roughness));
     }
   } else {
+    load_gltf_texture(tg_model, tg_material, texture);
+
     if (metalic == 1. && roughness == 0.) {
       *bxdf = std::move(std::make_unique<Mirror>(base_color));
     } else if (metalic == 0. && roughness == 1.) {
-      *bxdf = std::move(std::make_unique<Lambertian>(base_color));
+      *bxdf = std::move(std::make_unique<Lambertian>(
+          base_color, texture ? texture->get() : nullptr));
     } else if (metalic == 1.) {
       *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness));
     } else {
-      *bxdf = std::move(
-          std::make_unique<MixtureBrdf>(base_color, metalic, roughness));
+      *bxdf = std::move(std::make_unique<MixtureBrdf>(
+          base_color, metalic, roughness, texture ? texture->get() : nullptr));
     }
   }
 

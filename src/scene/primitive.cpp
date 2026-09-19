@@ -77,7 +77,7 @@ bool Sphere::hit(Ray &ray, HitRecord *record) const {
   record->distance = t;
   record->hitpoint = ray.org + ray.dir * t;
   record->normal = normalize(ray.dir * t - oc);
-  record->uv = get_uv(record->hitpoint);
+  record->uv = get_texcoord(record->hitpoint);
   return true;
 }
 
@@ -117,7 +117,7 @@ bool Cylinder::hit(Ray &ray, HitRecord *record) const {
   record->distance = t;
   record->hitpoint = ray.org + ray.dir * t;
   record->normal = get_normal(record->hitpoint);
-  record->uv = get_uv(record->hitpoint);
+  record->uv = get_texcoord(record->hitpoint);
   return true;
 }
 
@@ -136,7 +136,7 @@ bool Disk::hit(Ray &ray, HitRecord *record) const {
   record->distance = t;
   record->hitpoint = pos;
   record->normal = normal;
-  record->uv = get_uv(pos);
+  record->uv = get_texcoord(pos);
   return true;
 }
 

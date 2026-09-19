@@ -1,6 +1,7 @@
 #include "scene.h"
 #include "renderer/material.h"
 #include "scene/primitive.h"
+#include "scene/texture.h"
 #include "tiny_gltf_v3.h"
 #include "util/tg3helper.h"
 #include "util/utils.h"
@@ -178,6 +179,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
   tg3_parse_options_init(&tg_options);
   tg3_error_stack_init(&tg_errors);
 
+  tg_options.images_as_is = 0;
+
   auto tg_result = tg3_parse_file(
       &tg_model, &tg_errors, filename.c_str(),
       static_cast<uint32_t>(std::strlen(filename.c_str())), &tg_options);
@@ -262,6 +265,32 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                             ? tg_normal_view.byte_stride
                                             : sizeof(float) * 3;
 
+      int32_t texcoord_accessor_idx =
+          find_attrib_accessor(tg_prim, "TEXCOORD_0");
+      bool has_texcoord_0 = texcoord_accessor_idx != TG3_INDEX_NONE;
+
+      // undefined behavior
+      const tg3_accessor &tg_texcoords =
+          tg_model.accessors[texcoord_accessor_idx];
+      if (has_texcoord_0 &&
+          (tg_texcoords.component_type != TG3_COMPONENT_TYPE_FLOAT ||
+           tg_texcoords.type != TG3_TYPE_VEC2)) {
+        std::cerr << "unsupported TEXCOORD_0 format: " << filename << std::endl;
+        continue;
+      }
+
+      const uint8_t *tg_texcoord_data = accessor_data(tg_model, tg_texcoords);
+      if (has_texcoord_0 && !tg_texcoord_data) {
+        std::cerr << "no TEXCOORD_0 accessor: " << filename << std::endl;
+        continue;
+      }
+
+      const tg3_buffer_view &tg_texcoord_view =
+          tg_model.buffer_views[tg_texcoords.buffer_view];
+      const uint32_t tg_texcoord_stride = tg_texcoord_view.byte_stride != 0
+                                              ? tg_texcoord_view.byte_stride
+                                              : sizeof(float) * 2;
+
       Mat4 transform_mat = get_transform_mat(tg_model, node_i);
       std::vector<Vertex> triangle_verts;
       // no indices
@@ -269,7 +298,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
         Vertex vertices[3];
 
         for (uint64_t i = 0; i + 2 < tg_positions.count; i += 3) {
-          float tmp_vertices[3], tmp_normals[3];
+          float tmp_vertices[3], tmp_normals[3], tmp_texcoords[2];
 
           for (uint32_t j = 0; j < 3; ++j) {
             std::memcpy(&tmp_vertices,
@@ -280,16 +309,26 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                         tg_normal_data + (i + j) * tg_normal_stride,
                         sizeof(float) * 3);
 
-            Vec3 v = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
-                          (double)tmp_vertices[2]);
+            if (has_texcoord_0) {
+              std::memcpy(&tmp_texcoords,
+                          tg_texcoord_data + (i + j) * tg_texcoord_stride,
+                          sizeof(float) * 2);
+            }
 
-            Vec3 n = Vec3((double)tmp_normals[0], (double)tmp_normals[1],
-                          (double)tmp_normals[2]);
+            Vec3 vec = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
+                            (double)tmp_vertices[2]);
 
-            v = transform(v, transform_mat) * scale + tr;
-            n = normalize(
-                transform(n, get_normal_transform_mat(transform_mat)));
-            triangle_verts.emplace_back(Vertex(v, n));
+            Vec3 normal = Vec3((double)tmp_normals[0], (double)tmp_normals[1],
+                               (double)tmp_normals[2]);
+
+            Vec2 uv = has_texcoord_0 ? Vec2((double)tmp_texcoords[0],
+                                            (double)tmp_texcoords[1])
+                                     : Vec2(0.5);
+
+            vec = transform(vec, transform_mat) * scale + tr;
+            normal = normalize(
+                transform(normal, get_normal_transform_mat(transform_mat)));
+            triangle_verts.emplace_back(Vertex(vec, normal, uv));
           }
         }
       } else {
@@ -324,7 +363,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                                              : tg_index_size;
 
         for (uint64_t i = 0; i + 2 < tg_indices.count; i += 3) {
-          float tmp_vertices[3], tmp_normals[3];
+          float tmp_vertices[3], tmp_normals[3], tmp_texcoords[2];
           const uint32_t vertex_indices[3] = {
               read_tg_index(tg_index_data, i, tg_index_stride,
                             tg_indices.component_type),
@@ -350,16 +389,27 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                         tg_normal_data + vertex_indices[j] * tg_normal_stride,
                         sizeof(float) * 3);
 
-            Vec3 v = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
-                          (double)tmp_vertices[2]);
+            if (has_texcoord_0) {
+              std::memcpy(&tmp_texcoords,
+                          tg_texcoord_data +
+                              vertex_indices[j] * tg_texcoord_stride,
+                          sizeof(float) * 2);
+            }
 
-            Vec3 n = Vec3((double)tmp_normals[0], (double)tmp_normals[1],
-                          (double)tmp_normals[2]);
+            Vec3 vec = Vec3((double)tmp_vertices[0], (double)tmp_vertices[1],
+                            (double)tmp_vertices[2]);
 
-            v = transform(v, transform_mat) * scale + tr;
-            n = normalize(
-                transform(n, get_normal_transform_mat(transform_mat)));
-            triangle_verts.emplace_back(Vertex(v, n));
+            Vec3 normal = Vec3((double)tmp_normals[0], (double)tmp_normals[1],
+                               (double)tmp_normals[2]);
+
+            Vec2 uv = has_texcoord_0 ? Vec2((double)tmp_texcoords[0],
+                                            (double)tmp_texcoords[1])
+                                     : Vec2(0.5);
+
+            vec = transform(vec, transform_mat) * scale + tr;
+            normal = normalize(
+                transform(normal, get_normal_transform_mat(transform_mat)));
+            triangle_verts.emplace_back(Vertex(vec, normal, uv));
           }
         }
       }
@@ -371,22 +421,28 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
         Primitive prim = Primitive(shape.get(), primitives.size());
 
-        uint64_t hashed_bxdf_id = std::hash<std::string>()(
+        uint64_t hashed_id = std::hash<std::string>()(
             filename +
             std::to_string(tg_mesh.primitives_count * node_i + prim_i));
-        auto corresponding_bxdf = search_bxdf(hashed_bxdf_id);
+        auto corresponding_bxdf = search_bxdf(hashed_id);
 
         if (corresponding_bxdf) {
           prim.bxdf = corresponding_bxdf->get();
           prim.emission = load_gltf_emission(tg_model, tg_prim);
         } else {
           std::unique_ptr<Bxdf> bxdf;
+          std::unique_ptr<Texture> texture;
           Color emission;
-          load_gltf_material(tg_model, tg_prim, &bxdf, &emission);
-          bxdf->id = hashed_bxdf_id;
+          load_gltf_material(tg_model, tg_prim, &bxdf, &emission, &texture);
+          bxdf->id = hashed_id;
           prim.bxdf = bxdf.get();
           prim.emission = emission;
           bxdfs.emplace_back(std::move(bxdf));
+
+          if (texture) {
+            texture->id = hashed_id;
+            textures.emplace_back(std::move(texture));
+          }
         }
 
         if (prim.is_light()) {
