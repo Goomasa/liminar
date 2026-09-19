@@ -172,7 +172,7 @@ public:
   bool is_specular() const override { return true; }
 
   void display() const override {
-    std::cout << "Mirror, ior: " << ior << " , color: ";
+    std::cout << "Glass, ior: " << ior << " , color: ";
     color.display();
   }
 };

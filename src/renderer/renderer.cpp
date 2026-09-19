@@ -93,8 +93,8 @@ void Renderer::set_scene(ObjectNode &node) {
     auto pixels = load_image(filename, &width, &height);
 
     if (pixels.has_value()) {
-      background = std::make_unique<ImageTexture>(filename, pixels.value(),
-                                                  width, height);
+      background =
+          std::make_unique<ImageTexture>(pixels.value(), width, height);
     } else {
       background = std::make_unique<SolidColor>(Color());
     }

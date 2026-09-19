@@ -58,13 +58,13 @@ Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
   if (dot(dir_next, normal) < 0.) {
     // refract
-    return r_io * r_io * color / fmax(-dot(wi, normal), EPS) *
+    return r_io * r_io * color / fmax(fabs(dot(wi, normal)), EPS) *
            (1. - reflectance);
   } else {
     // reflect
     bool is_refract = check_refraction(dir_prev, normal, r_pn);
     reflectance = is_refract ? reflectance : 1.;
-    return color / fmax(dot(wi, normal), EPS) * reflectance;
+    return color / fmax(fabs(dot(wi, normal)), EPS) * reflectance;
   }
 }
 
@@ -104,7 +104,11 @@ double Glass::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
   if (dot(dir_next, normal) < 0.) {
     return 1. - schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
   } else {
-    return schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
+    if (!check_refraction(dir_prev, normal, r)) {
+      return 1.;
+    } else {
+      return schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
+    }
   }
 }
 

@@ -5,6 +5,28 @@
 #include <cstdint>
 #include <memory>
 
+inline bool is_transparent(const tg3_material &tg_mat, double *ior) {
+  constexpr std::string KHR_EXT_NAME = "KHR_materials_ior";
+  constexpr std::string EXT_OBJECT_KEY = "ior";
+
+  *ior = 0.;
+
+  for (uint32_t i = 0; i < tg_mat.ext.extensions_count; i++) {
+    if (tg_mat.ext.extensions[i].name.data == KHR_EXT_NAME) {
+      const tg3_extension tg_ext = tg_mat.ext.extensions[i];
+
+      for (uint32_t j = 0; j < tg_ext.value.object_count; j++) {
+        if (tg_ext.value.object_data[j].key.data == EXT_OBJECT_KEY) {
+          *ior = tg_ext.value.object_data[j].value.real_val;
+          break;
+        }
+      }
+    }
+  }
+
+  return *ior > 1.;
+}
+
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission) {
   if (tg_prim.material < 0 || tg_prim.material >= tg_model.materials_count) {
@@ -27,16 +49,26 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
             tg_pbr_info.base_color_factor[2]);
   double roughness = tg_pbr_info.roughness_factor;
   double metalic = tg_pbr_info.metallic_factor;
+  double ior;
 
-  if (metalic == 1. && roughness == 0.) {
-    *bxdf = std::move(std::make_unique<Mirror>(base_color));
-  } else if (metalic == 0. && roughness == 1.) {
-    *bxdf = std::move(std::make_unique<Lambertian>(base_color));
-  } else if (metalic == 1.) {
-    *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness));
+  if (is_transparent(tg_material, &ior)) {
+    if (roughness == 0.) {
+      *bxdf = std::move(std::make_unique<Glass>(base_color, ior));
+    } else {
+      *bxdf =
+          std::move(std::make_unique<MicroBtdf>(base_color, ior, roughness));
+    }
   } else {
-    *bxdf = std::move(
-        std::make_unique<MixtureBrdf>(base_color, metalic, roughness));
+    if (metalic == 1. && roughness == 0.) {
+      *bxdf = std::move(std::make_unique<Mirror>(base_color));
+    } else if (metalic == 0. && roughness == 1.) {
+      *bxdf = std::move(std::make_unique<Lambertian>(base_color));
+    } else if (metalic == 1.) {
+      *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness));
+    } else {
+      *bxdf = std::move(
+          std::make_unique<MixtureBrdf>(base_color, metalic, roughness));
+    }
   }
 
   bxdf->get()->display();

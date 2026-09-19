@@ -2,11 +2,12 @@
 
 #include "util/utils.h"
 #include <cstdint>
-#include <string>
 #include <vector>
 
 class Texture {
 public:
+  uint64_t id;
+
   virtual ~Texture() = default;
   virtual Color get_color(const Vec2 &uv) const = 0;
 };
@@ -35,13 +36,12 @@ public:
 
 class ImageTexture : public Texture {
 public:
-  std::string filename;
   std::vector<TexColor3f> pixels;
   uint32_t width, height;
 
-  ImageTexture(const std::string &name, const std::vector<TexColor3f> &px,
-               const uint32_t width, const uint32_t height)
-      : filename(name), pixels(px), width(width), height(height) {}
+  ImageTexture(const std::vector<TexColor3f> &px, const uint32_t width,
+               const uint32_t height)
+      : pixels(px), width(width), height(height) {}
 
   Color get_color(const Vec2 &uv) const override {
     uint32_t w = uv.u == 1. ? width - 1 : static_cast<uint32_t>(uv.u * width);

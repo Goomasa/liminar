@@ -58,7 +58,9 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
       break;
     }
 
-    now_ray = Ray(record.hitpoint, wi, record.id);
+    now_ray = dot(wi, orienting_normal) > 0.
+                  ? Ray(record.hitpoint + EPS * orienting_normal, wi)
+                  : Ray(record.hitpoint - EPS * orienting_normal, wi);
     throughput =
         throughput *
         prim->bxdf->eval(wo, wi, record.uv, orienting_normal, into, mode) *
@@ -230,6 +232,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     Vec3 wo = -1. * now_ray.dir;
     bool into = dot(orienting_normal, record.normal) > 0.;
 
+    // light sampling
     int32_t light_id = scene->sample_light_uniform(rnd);
     if (!prim->bxdf->is_specular() && light_id >= 0) {
       Primitive *light = &scene->primitives[light_id];
@@ -243,7 +246,10 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
                                           into, mode);
 
       test_record.reset(to_light.len() + 0.1);
-      test_ray = Ray(record.hitpoint, to_light_norm, record.id);
+      test_ray =
+          dot(to_light_norm, orienting_normal) > 0.
+              ? Ray(record.hitpoint + EPS * orienting_normal, to_light_norm)
+              : Ray(record.hitpoint - EPS * orienting_normal, to_light_norm);
 
       if (pdf_bxdf > 0. && scene->intersect(test_ray, &test_record) &&
           test_record.id == light_id &&
@@ -270,7 +276,9 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
       break;
     }
 
-    now_ray = Ray(record.hitpoint, wi, record.id);
+    now_ray = dot(wi, orienting_normal) > 0.
+                  ? Ray(record.hitpoint + EPS * orienting_normal, wi)
+                  : Ray(record.hitpoint - EPS * orienting_normal, wi);
     throughput =
         throughput *
         prim->bxdf->eval(wo, wi, record.uv, orienting_normal, into, mode) *

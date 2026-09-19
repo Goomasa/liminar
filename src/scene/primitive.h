@@ -243,7 +243,7 @@ public:
       : shape(shape), bxdf(bxdf), emission(emission), id(id) {}
 
   inline void hit(Ray &ray, HitRecord *record) const {
-    if (ray.prev_id != id && shape->hit(ray, record)) {
+    if (shape->hit(ray, record)) {
       record->id = id;
     }
   }
