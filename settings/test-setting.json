@@ -19,7 +19,7 @@
       "sensor-width":30,
       "sensor-dir":[0,0,-1],
       "sensor-to-hole":40,
-      "w-scale":10
+      "w-scale":20
     },
 
     "lens":{

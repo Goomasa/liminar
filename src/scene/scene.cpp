@@ -218,82 +218,30 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
         continue;
       }
 
-      int32_t position_accessor_idx = find_attrib_accessor(tg_prim, "POSITION");
-      if (position_accessor_idx == TG3_INDEX_NONE) {
-        std::cerr << "invalid POSITION accessor" << filename << std::endl;
+      tg3_accessor tg_positions;
+      const uint8_t *tg_position_data;
+      uint32_t tg_position_stride = sizeof(float) * 3;
+      if (!load_gltf_data(tg_model, tg_prim, &tg_positions, tg_position_data,
+                          &tg_position_stride, "POSITION", TG3_TYPE_VEC3)) {
+        std::cerr << "no POSITION: " << filename << std::endl;
         continue;
       }
 
-      const tg3_accessor &tg_positions =
-          tg_model.accessors[position_accessor_idx];
-      if (tg_positions.component_type != TG3_COMPONENT_TYPE_FLOAT ||
-          tg_positions.type != TG3_TYPE_VEC3) {
-        std::cerr << "unsupported POSITION format: " << filename << std::endl;
+      tg3_accessor tg_normals;
+      const uint8_t *tg_normal_data;
+      uint32_t tg_normal_stride = sizeof(float) * 3;
+      if (!load_gltf_data(tg_model, tg_prim, &tg_normals, tg_normal_data,
+                          &tg_normal_stride, "NORMAL", TG3_TYPE_VEC3)) {
+        std::cerr << "no NORMAL: " << filename << std::endl;
         continue;
       }
 
-      const uint8_t *tg_position_data = accessor_data(tg_model, tg_positions);
-      if (!tg_position_data) {
-        std::cerr << "no POSITION accessor: " << filename << std::endl;
-        continue;
-      }
-
-      const tg3_buffer_view &tg_position_view =
-          tg_model.buffer_views[tg_positions.buffer_view];
-      const uint32_t tg_position_stride = tg_position_view.byte_stride != 0
-                                              ? tg_position_view.byte_stride
-                                              : sizeof(float) * 3;
-
-      int32_t normal_accessor_idx = find_attrib_accessor(tg_prim, "NORMAL");
-      if (normal_accessor_idx == TG3_INDEX_NONE) {
-        std::cerr << "no NORMAL accessor: " << filename << std::endl;
-        continue;
-      }
-
-      const tg3_accessor &tg_normals = tg_model.accessors[normal_accessor_idx];
-      if (tg_normals.component_type != TG3_COMPONENT_TYPE_FLOAT ||
-          tg_normals.type != TG3_TYPE_VEC3) {
-        std::cerr << "unsupported NORMAL format: " << filename << std::endl;
-        continue;
-      }
-
-      const uint8_t *tg_normal_data = accessor_data(tg_model, tg_normals);
-      if (!tg_normal_data) {
-        std::cerr << "no NORMAL accessor: " << filename << std::endl;
-        continue;
-      }
-
-      const tg3_buffer_view &tg_normal_view =
-          tg_model.buffer_views[tg_normals.buffer_view];
-      const uint32_t tg_normal_stride = tg_normal_view.byte_stride != 0
-                                            ? tg_normal_view.byte_stride
-                                            : sizeof(float) * 3;
-
-      int32_t texcoord_accessor_idx =
-          find_attrib_accessor(tg_prim, "TEXCOORD_0");
-      bool has_texcoord_0 = texcoord_accessor_idx != TG3_INDEX_NONE;
-
-      // undefined behavior if has_texcoord_0=false
-      const tg3_accessor &tg_texcoords =
-          tg_model.accessors[texcoord_accessor_idx];
-      if (has_texcoord_0 &&
-          (tg_texcoords.component_type != TG3_COMPONENT_TYPE_FLOAT ||
-           tg_texcoords.type != TG3_TYPE_VEC2)) {
-        std::cerr << "unsupported TEXCOORD_0 format: " << filename << std::endl;
-        continue;
-      }
-
-      const uint8_t *tg_texcoord_data = accessor_data(tg_model, tg_texcoords);
-      if (has_texcoord_0 && !tg_texcoord_data) {
-        std::cerr << "no TEXCOORD_0 accessor: " << filename << std::endl;
-        continue;
-      }
-
-      const tg3_buffer_view &tg_texcoord_view =
-          tg_model.buffer_views[tg_texcoords.buffer_view];
-      const uint32_t tg_texcoord_stride = tg_texcoord_view.byte_stride != 0
-                                              ? tg_texcoord_view.byte_stride
-                                              : sizeof(float) * 2;
+      tg3_accessor tg_texcoords;
+      const uint8_t *tg_texcoord_data;
+      uint32_t tg_texcoord_stride = sizeof(float) * 2;
+      bool has_texcoord_0 =
+          load_gltf_data(tg_model, tg_prim, &tg_texcoords, tg_texcoord_data,
+                         &tg_texcoord_stride, "TEXCOORD_0", TG3_TYPE_VEC2);
 
       Mat4 transform_mat = get_transform_mat(tg_model, node_i);
       std::vector<Vertex> triangle_verts;
@@ -418,15 +366,15 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
         }
       }
 
+      uint64_t hashed_id =
+          std::hash<std::string>()(filename + std::to_string(primitive_id));
+
       for (uint32_t tidx = 0; tidx < triangle_verts.size() / 3; tidx++) {
         std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
             triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
             triangle_verts[tidx * 3 + 2]);
 
         Primitive prim = Primitive(shape.get(), primitives.size());
-
-        uint64_t hashed_id =
-            std::hash<std::string>()(filename + std::to_string(primitive_id));
         auto corresponding_bxdf = search_bxdf(hashed_id);
 
         if (corresponding_bxdf) {

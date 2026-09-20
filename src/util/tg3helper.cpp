@@ -76,9 +76,8 @@ inline void get_texcoord_sampler(const tg3_model &tg_model,
   *sampler_v = to_sampler(tg_sampler.wrap_t);
 }
 
-void load_gltf_texture(const tg3_model &tg_model, const tg3_material &tg_mat,
+void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
                        std::unique_ptr<Texture> *texture) {
-  int32_t tex_idx = tg_mat.pbr_metallic_roughness.base_color_texture.index;
   if (tex_idx < 0 || tex_idx >= tg_model.textures_count) {
     return;
   }
@@ -171,7 +170,7 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
           std::move(std::make_unique<MicroBtdf>(base_color, ior, roughness));
     }
   } else {
-    load_gltf_texture(tg_model, tg_material, texture);
+    load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, texture);
 
     if (metalic == 1. && roughness == 0.) {
       *bxdf = std::move(std::make_unique<Mirror>(base_color));
