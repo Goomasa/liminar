@@ -14,8 +14,8 @@ public:
 
   virtual ~Bxdf() = default;
   virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
-                     const Vec3 &normal, const bool into,
-                     const IntegrateMode &mode) const = 0;
+                     const Vec3 &normal, const Vec3 &geometry_normal,
+                     const bool into, const IntegrateMode &mode) const = 0;
   virtual Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
                       Random *rnd, const IntegrateMode &mode) const = 0;
   virtual double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
@@ -83,6 +83,20 @@ protected:
     double d = dot(wi, normal);
     return f0 + (Vec3(1.) - f0) * exp2((-5.55473 * d - 6.98316) * d);
   }
+
+  inline static bool check_light_leak(const Vec3 &wi, const Vec3 &wo,
+                                      const Vec3 &shading_normal,
+                                      const Vec3 &geometry_normal) {
+    // true -> ok
+    return dot(wo, shading_normal) * dot(wo, geometry_normal) > 0. &&
+           dot(wi, shading_normal) * dot(wi, geometry_normal) > 0.;
+  }
+
+  inline static bool check_block_surface(const Vec3 &wi, const Vec3 &wo,
+                                         const Vec3 &geometry_normal) {
+    // true -> reflect
+    return dot(wo, geometry_normal) * dot(wi, geometry_normal) > 0.;
+  }
 };
 
 class Lambertian : public Bxdf {
@@ -94,8 +108,12 @@ public:
       : color(color), texture(texture) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override {
-    return get_color(uv) * PI_INV;
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override {
+    return check_light_leak(wi, wo, normal, geometry_normal) &&
+                   check_block_surface(wi, wo, geometry_normal)
+               ? get_color(uv) * PI_INV
+               : 0.;
   }
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -129,8 +147,12 @@ public:
   Mirror(const Color &color) : color(color) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override {
-    return color / fabs(dot(wi, normal));
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override {
+    return check_light_leak(wi, wo, normal, geometry_normal) &&
+                   check_block_surface(wi, wo, geometry_normal)
+               ? color / fabs(dot(wi, normal))
+               : 0.;
   }
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
@@ -160,7 +182,8 @@ public:
   Glass(const Color &color, const double ior) : color(color), ior(ior) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override;
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
               Random *rnd, const IntegrateMode &mode) const override;
@@ -187,7 +210,8 @@ public:
       : color(color), alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override;
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
               Random *rnd, const IntegrateMode &mode) const override;
@@ -241,7 +265,8 @@ public:
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override;
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
               Random *rnd, const IntegrateMode &mode) const override;
@@ -337,7 +362,8 @@ public:
         alpha_y(std::clamp(roughness_y * roughness_y, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override;
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
               Random *rnd, const IntegrateMode &mode) const override;
@@ -429,7 +455,8 @@ public:
   }
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
-             const bool into, const IntegrateMode &mode) const override;
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override;
 
   Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
               Random *rnd, const IntegrateMode &mode) const override;
@@ -503,9 +530,9 @@ private:
     }
   }
 
-  Color fs0() const {
+  Color fs0(const Color &color) const {
     double t = 0.08 * specular;
-    return metalic * base_color + (1. - metalic) * Vec3(t);
+    return metalic * color + (1. - metalic) * Vec3(t);
   }
 
   Color get_color(const Vec2 &uv) const {

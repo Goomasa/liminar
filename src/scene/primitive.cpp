@@ -32,6 +32,7 @@ bool Triangle::hit(Ray &ray, HitRecord *record) const {
   record->hitpoint = pos;
   record->normal = normalize(
       tlerp<Vec3>(p.normal, q.normal, r.normal, Vec2(geom_u, geom_v)));
+  record->geometry_normal = geometry_normal;
   record->uv = tlerp<Vec2>(p.uv, q.uv, r.uv, Vec2(geom_u, geom_v));
 
   return true;
@@ -77,6 +78,7 @@ bool Sphere::hit(Ray &ray, HitRecord *record) const {
   record->distance = t;
   record->hitpoint = ray.org + ray.dir * t;
   record->normal = normalize(ray.dir * t - oc);
+  record->geometry_normal = record->normal;
   record->uv = get_texcoord(record->hitpoint);
   return true;
 }
@@ -117,6 +119,7 @@ bool Cylinder::hit(Ray &ray, HitRecord *record) const {
   record->distance = t;
   record->hitpoint = ray.org + ray.dir * t;
   record->normal = get_normal(record->hitpoint);
+  record->geometry_normal = record->normal;
   record->uv = get_texcoord(record->hitpoint);
   return true;
 }
@@ -136,6 +139,7 @@ bool Disk::hit(Ray &ray, HitRecord *record) const {
   record->distance = t;
   record->hitpoint = pos;
   record->normal = normal;
+  record->geometry_normal = record->normal;
   record->uv = get_texcoord(pos);
   return true;
 }

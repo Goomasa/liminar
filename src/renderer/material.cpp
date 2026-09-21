@@ -44,8 +44,8 @@ double Lambertian::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
 }
 
 Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
-                  const Vec3 &normal, const bool into,
-                  const IntegrateMode &mode) const {
+                  const Vec3 &normal, const Vec3 &geometry_normal,
+                  const bool into, const IntegrateMode &mode) const {
   double ior_o, ior_i, ior_prev, ior_next;
   get_ior(ior, &ior_i, &ior_o, &ior_prev, &ior_next, into, mode);
 
@@ -58,13 +58,24 @@ Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
   if (dot(dir_next, normal) < 0.) {
     // refract
-    return r_io * r_io * color / fmax(fabs(dot(wi, normal)), EPS) *
-           (1. - reflectance);
+    if (check_light_leak(wi, wo, normal, geometry_normal) &&
+        !check_block_surface(wi, wo, geometry_normal)) {
+      return r_io * r_io * color / fmax(fabs(dot(wi, normal)), EPS) *
+             (1. - reflectance);
+    } else {
+      return 0.;
+    }
   } else {
     // reflect
     bool is_refract = check_refraction(dir_prev, normal, r_pn);
     reflectance = is_refract ? reflectance : 1.;
-    return color / fmax(fabs(dot(wi, normal)), EPS) * reflectance;
+
+    if (check_light_leak(wi, wo, normal, geometry_normal) &&
+        check_block_surface(wi, wo, geometry_normal)) {
+      return color / fmax(fabs(dot(wi, normal)), EPS) * reflectance;
+    } else {
+      return 0.;
+    }
   }
 }
 
@@ -113,12 +124,18 @@ double Glass::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
 }
 
 Color MicroBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
-                      const Vec3 &normal, const bool into,
-                      const IntegrateMode &mode) const {
+                      const Vec3 &normal, const Vec3 &geometry_normal,
+                      const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
   Color fresnel = schlick_fresnel(color, wi, wm);
-  return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+
+  if (check_light_leak(wi, wo, normal, geometry_normal) &&
+      check_block_surface(wi, wo, geometry_normal)) {
+    return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+  } else {
+    return 0.;
+  }
 }
 
 Vec3 MicroBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
@@ -152,8 +169,8 @@ Vec3 MicroBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
 }
 
 Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
-                      const Vec3 &normal, const bool into,
-                      const IntegrateMode &mode) const {
+                      const Vec3 &normal, const Vec3 &geometry_normal,
+                      const bool into, const IntegrateMode &mode) const {
   double ior_o, ior_i, ior_prev, ior_next;
   get_ior(ior, &ior_i, &ior_o, &ior_prev, &ior_next, into, mode);
 
@@ -173,8 +190,13 @@ Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
                fabs(dot(wi, normal) * dot(wo, normal));
     double denom = fmax(pow(dot(wi, wm) + r_io * dot(wo, wm), 2), EPS);
 
-    return color * c * (1 - reflectance) * ggx_g2(wi, wo, normal) *
-           ggx_d(wm, normal) * r_io * r_io / denom;
+    if (check_light_leak(wi, wo, normal, geometry_normal) &&
+        !check_block_surface(wi, wo, geometry_normal)) {
+      return color * c * (1 - reflectance) * ggx_g2(wi, wo, normal) *
+             ggx_d(wm, normal) * r_io * r_io / denom;
+    } else {
+      return 0.;
+    }
   } else {
     // reflect
     Vec3 wm = normalize(wi + wo);
@@ -183,10 +205,15 @@ Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
     bool is_refract = check_refraction(dir_prev, wm, r_pn);
     reflectance = is_refract ? reflectance : 1.;
-
     double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
-    return color * reflectance * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) /
-           denom;
+
+    if (check_light_leak(wi, wo, normal, geometry_normal) &&
+        check_block_surface(wi, wo, geometry_normal)) {
+      return color * reflectance * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) /
+             denom;
+    } else {
+      return 0.;
+    }
   }
 }
 
@@ -249,12 +276,18 @@ Vec3 MicroBtdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
 }
 
 Color MicroBrdfAniso::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
-                           const Vec3 &normal, const bool into,
-                           const IntegrateMode &mode) const {
+                           const Vec3 &normal, const Vec3 &geometry_normal,
+                           const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
   Color fresnel = schlick_fresnel(color, wi, wm);
-  return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+
+  if (check_light_leak(wi, wo, normal, geometry_normal) &&
+      check_block_surface(wi, wo, geometry_normal)) {
+    return fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
+  } else {
+    return 0.;
+  }
 }
 
 Vec3 MicroBrdfAniso::sample(const Vec3 &dir_prev, const Vec3 &normal,
@@ -288,16 +321,22 @@ Vec3 MicroBrdfAniso::sample(const Vec3 &dir_prev, const Vec3 &normal,
 }
 
 Color MixtureBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
-                        const Vec3 &normal, const bool into,
-                        const IntegrateMode &mode) const {
+                        const Vec3 &normal, const Vec3 &geometry_normal,
+                        const bool into, const IntegrateMode &mode) const {
+  Color color = get_color(uv);
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
-  Color fresnel = fresnel_gaussian(fs0(), wi, wm);
+  Color fresnel = fresnel_gaussian(fs0(color), wi, wm);
   Color f_spec = fresnel * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) / denom;
 
-  Color f_diff = get_color(uv) * PI_INV;
+  Color f_diff = color * PI_INV;
 
-  return (1. - metalic) * (Vec3(1.) - fresnel) * f_diff + f_spec;
+  if (check_light_leak(wi, wo, normal, geometry_normal) &&
+      check_block_surface(wi, wo, geometry_normal)) {
+    return (1. - metalic) * (Vec3(1.) - fresnel) * f_diff + f_spec;
+  } else {
+    return 0.;
+  }
 }
 
 Vec3 MixtureBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
@@ -307,7 +346,7 @@ Vec3 MixtureBrdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
     return sample_cosine_hemisphere(normal, rnd);
   } else {
     Vec3 wm = sample_vndf(dir_prev, normal, rnd);
-    return wm == INVALID_VEC ? wm : reflection_dir(dir_prev, wm);
+    return wm == INVALID_VEC ? INVALID_VEC : reflection_dir(dir_prev, wm);
   }
 }
 

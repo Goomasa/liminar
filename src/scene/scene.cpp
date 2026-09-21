@@ -391,7 +391,6 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
           bxdfs.emplace_back(std::move(bxdf));
 
           if (texture) {
-            texture->id = hashed_id;
             textures.emplace_back(std::move(texture));
           }
         }
@@ -441,7 +440,7 @@ void Scene::set_test_primitive() {
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(0, 25, 0), 15);
   std::unique_ptr<Bxdf> bxdf =
-      std::make_unique<MixtureBrdf>(Color(1.), 0., 0.1);
+      std::make_unique<MixtureBrdf>(Color(1.), 0.2, 0.1);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   // primitives.emplace_back(std::move(prim));
   // shapes.emplace_back(std::move(sphere));

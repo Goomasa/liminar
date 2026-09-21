@@ -27,8 +27,6 @@ inline double apply_wrap(const double texcoord,
 
 class Texture {
 public:
-  uint64_t id;
-
   virtual ~Texture() = default;
   virtual Color get_color(const Vec2 &uv) const = 0;
 };

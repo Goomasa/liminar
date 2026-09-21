@@ -25,7 +25,7 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
   HitRecord record = HitRecord();
   Color throughput = Color(1.);
   double pdf = 1.;
-  Vec3 orienting_normal, wo;
+  Vec3 orienting_normal, orienting_geom_normal, wo;
 
   for (uint32_t depth = 0;; depth++) {
     record.reset();
@@ -50,6 +50,10 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     orienting_normal = dot(record.normal, now_ray.dir) < 0.
                            ? record.normal
                            : -1. * record.normal;
+    orienting_geom_normal = dot(record.geometry_normal, orienting_normal) > 0.
+                                ? record.geometry_normal
+                                : -1. * record.geometry_normal;
+
     wo = -1. * now_ray.dir;
     bool into = dot(orienting_normal, record.normal) > 0.;
 
@@ -61,10 +65,10 @@ void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
     now_ray = dot(wi, orienting_normal) > 0.
                   ? Ray(record.hitpoint + EPS * orienting_normal, wi)
                   : Ray(record.hitpoint - EPS * orienting_normal, wi);
-    throughput =
-        throughput *
-        prim->bxdf->eval(wo, wi, record.uv, orienting_normal, into, mode) *
-        fabs(dot(wi, orienting_normal));
+    throughput = throughput *
+                 prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
+                                  orienting_geom_normal, into, mode) *
+                 fabs(dot(wi, orienting_normal));
     pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
   }
 }
@@ -229,6 +233,10 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     Vec3 orienting_normal = dot(record.normal, now_ray.dir) < 0.
                                 ? record.normal
                                 : -1. * record.normal;
+    Vec3 orienting_geom_normal =
+        dot(record.geometry_normal, orienting_normal) > 0.
+            ? record.geometry_normal
+            : -1. * record.geometry_normal;
     Vec3 wo = -1. * now_ray.dir;
     bool into = dot(orienting_normal, record.normal) > 0.;
 
@@ -264,7 +272,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
         Color tmp_throughput =
             throughput *
             prim->bxdf->eval(wo, to_light_norm, test_record.uv,
-                             orienting_normal, into, mode) *
+                             orienting_normal, orienting_geom_normal, into,
+                             mode) *
             fabs(dot(to_light_norm, orienting_normal));
         value = value + light->emission * (tmp_throughput * mis_weight /
                                            (pdf * pdf_sample_light));
@@ -279,10 +288,10 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     now_ray = dot(wi, orienting_normal) > 0.
                   ? Ray(record.hitpoint + EPS * orienting_normal, wi)
                   : Ray(record.hitpoint - EPS * orienting_normal, wi);
-    throughput =
-        throughput *
-        prim->bxdf->eval(wo, wi, record.uv, orienting_normal, into, mode) *
-        fabs(dot(wi, orienting_normal));
+    throughput = throughput *
+                 prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
+                                  orienting_geom_normal, into, mode) *
+                 fabs(dot(wi, orienting_normal));
     prev_pdf_bxdf =
         prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
     pdf *= prev_pdf_bxdf;
