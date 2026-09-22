@@ -438,19 +438,24 @@ class MixtureBrdf : public Bxdf {
 public:
   Color base_color;
   double metalic, specular, alpha;
-  Texture *texture;
+  Texture *color_texture;
+  Texture *metalic_roughness_texture;
 
   MixtureBrdf(const Color &color, const double metalic, const double specular,
-              const double roughness, Texture *texture = nullptr)
-      : base_color(color), metalic(metalic), specular(specular),
-        alpha(std::clamp(roughness * roughness, 0.001, 1.)), texture(texture) {
+              const double roughness, Texture *col_tex = nullptr,
+              Texture *mr_tex = nullptr)
+      : base_color(color), metalic(clamp01(metalic)),
+        specular(clamp01(specular)),
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)),
+        color_texture(col_tex), metalic_roughness_texture(mr_tex) {
     diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
   MixtureBrdf(const Color &color, const double metalic, const double roughness,
-              Texture *texture = nullptr)
-      : base_color(color), metalic(metalic), specular(0.5),
-        alpha(std::clamp(roughness * roughness, 0.001, 1.)), texture(texture) {
+              Texture *col_tex = nullptr, Texture *mr_tex = nullptr)
+      : base_color(color), metalic(clamp01(metalic)), specular(0.5),
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)),
+        color_texture(col_tex), metalic_roughness_texture(mr_tex) {
     diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
@@ -536,10 +541,10 @@ private:
   }
 
   Color get_color(const Vec2 &uv) const {
-    if (!texture) {
+    if (!color_texture) {
       return base_color;
     } else {
-      return texture->get_color(uv);
+      return color_texture->get_color(uv);
     }
   }
 };

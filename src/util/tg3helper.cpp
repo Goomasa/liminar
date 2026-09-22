@@ -8,6 +8,33 @@
 #include <memory>
 #include <vector>
 
+inline double get_gltf_specular(const tg3_material &tg_mat) {
+  const std::string KHR_EXT_NAME = "KHR_materials_specular";
+  const std::string EXT_OBJECT_KEY1 = "specularFactor";
+  const std::string EXT_OBJECT_KEY2 = "specularColorFactor";
+
+  for (uint32_t i = 0; i < tg_mat.ext.extensions_count; i++) {
+    if (tg_mat.ext.extensions[i].name.data == KHR_EXT_NAME) {
+      const tg3_extension tg_ext = tg_mat.ext.extensions[i];
+
+      for (uint32_t j = 0; j < tg_ext.value.object_count; j++) {
+        const tg3_value &tg_value = tg_ext.value.object_data[j].value;
+
+        if (tg_ext.value.object_data[j].key.data == EXT_OBJECT_KEY1) {
+          return tg_value.type == TG3_VALUE_INT ? (double)tg_value.int_val
+                                                : tg_value.real_val;
+        } else if (tg_ext.value.object_data[j].key.data == EXT_OBJECT_KEY2 &&
+                   tg_value.type == TG3_VALUE_ARRAY) {
+          return tg_value.array_count > 0 ? tg_value.array_data[0].real_val
+                                          : 0.5;
+        }
+      }
+    }
+  }
+
+  return 0.5;
+}
+
 inline bool is_transparent(const tg3_material &tg_mat, double *ior) {
   const std::string KHR_EXT_NAME = "KHR_materials_ior";
   const std::string EXT_OBJECT_KEY = "ior";
@@ -180,8 +207,10 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
     } else if (metalic == 1.) {
       *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness));
     } else {
+      double specular = get_gltf_specular(tg_material);
       *bxdf = std::move(std::make_unique<MixtureBrdf>(
-          base_color, metalic, roughness, texture ? texture->get() : nullptr));
+          base_color, metalic, specular, roughness,
+          texture ? texture->get() : nullptr));
     }
   }
 
