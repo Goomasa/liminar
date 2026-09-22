@@ -1,10 +1,10 @@
 {
   "scene":{
-    "background-type":"image",
+    "background-type":"solid",
     "background":"brown_photostudio.hdr",
     "models":{
-      "path":"models/cornell-box",
-      "scale":10.0,
+      "path":"models/test-box",
+      "scale":1.0,
       "translation":[0,0,0]
     }
   },
@@ -15,8 +15,8 @@
       "resolution-w":400,
       "resolution-h":400,
       "up":[0,1,0],
-      "sensor-center":[0,25,120],
-      "sensor-width":30,
+      "sensor-center":[0,25,130],
+      "sensor-width":25,
       "sensor-dir":[0,0,-1],
       "sensor-to-hole":40,
       "w-scale":20

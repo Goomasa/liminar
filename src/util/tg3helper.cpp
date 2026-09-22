@@ -9,8 +9,8 @@
 #include <vector>
 
 inline bool is_transparent(const tg3_material &tg_mat, double *ior) {
-  constexpr std::string KHR_EXT_NAME = "KHR_materials_ior";
-  constexpr std::string EXT_OBJECT_KEY = "ior";
+  const std::string KHR_EXT_NAME = "KHR_materials_ior";
+  const std::string EXT_OBJECT_KEY = "ior";
 
   *ior = 0.;
 
@@ -84,13 +84,13 @@ void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
 
   const tg3_texture &tg_texture = tg_model.textures[tex_idx];
 
-  if (tg_texture.source < 0 && tg_texture.source >= tg_model.images_count) {
+  if (tg_texture.source < 0 || tg_texture.source >= tg_model.images_count) {
     return;
   }
 
   const tg3_image &tg_image = tg_model.images[tg_texture.source];
   uint32_t width = tg_image.width, height = tg_image.height;
-  int32_t channels = tg_image.component >= 0 ? tg_image.component : 3;
+  int32_t channels = tg_image.component > 0 ? tg_image.component : 4;
   const unsigned char *data = tg_image.image.data;
 
   TexcoordSampler sampler_u, sampler_v;
