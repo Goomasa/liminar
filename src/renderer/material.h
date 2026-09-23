@@ -36,7 +36,7 @@ protected:
     if (!color_texture) {
       return base_color;
     } else {
-      return color_texture->get_color(uv);
+      return color_texture->get_color(uv) * base_color;
     }
   }
 

@@ -85,6 +85,7 @@ inline void get_texcoord_sampler(const tg3_model &tg_model,
   if (sampler_idx == TG3_INDEX_NONE || sampler_idx >= tg_model.samplers_count) {
     *sampler_u = TexcoordSampler::REPEAT;
     *sampler_v = TexcoordSampler::REPEAT;
+    return;
   }
 
   const tg3_sampler &tg_sampler = tg_model.samplers[sampler_idx];
@@ -190,7 +191,7 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
   double ior;
 
   load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, color_tex);
-  Texture *color_texture_ptr = color_tex ? color_tex->get() : nullptr;
+  Texture *color_texture_ptr = *color_tex ? color_tex->get() : nullptr;
 
   if (is_transparent(tg_material, &ior)) {
     if (roughness == 0.) {

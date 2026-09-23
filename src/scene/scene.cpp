@@ -154,7 +154,7 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
         std::make_unique<ImageTexture>(color_pixels.value(), width, height));
   }
 
-  Texture *color_texture_ptr = color_tex ? color_tex->get() : nullptr;
+  Texture *color_texture_ptr = *color_tex ? color_tex->get() : nullptr;
 
   switch (material.illum) {
   case 3: {
@@ -404,7 +404,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
         if (corresponding_bxdf) {
           prim.bxdf = corresponding_bxdf->get();
-          prim.emission = load_gltf_emission(tg_model, tg_prim) * 5;
+          prim.emission = load_gltf_emission(tg_model, tg_prim);
         } else {
           std::unique_ptr<Bxdf> bxdf;
           std::unique_ptr<Texture> color_texture;
@@ -413,7 +413,7 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                              &color_texture);
           bxdf->id = hashed_id;
           prim.bxdf = bxdf.get();
-          prim.emission = emission * 5;
+          prim.emission = emission;
           bxdfs.emplace_back(std::move(bxdf));
 
           if (color_texture) {
