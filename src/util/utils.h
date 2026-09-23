@@ -141,6 +141,8 @@ const Vec3 INVALID_VEC = Vec3(INF, INF, INF);
 
 inline double clamp01(const double d) { return fmin(1., fmax(d, 0.)); }
 
+inline float clamp01f(const float f) { return fminf(1., fmaxf(f, 0.)); }
+
 inline double lerp1d(const double a, const double b, const double r) {
   // a <--- r ---> ? <--- 1-r ---> b
   return (1 - r) * a + r * b;

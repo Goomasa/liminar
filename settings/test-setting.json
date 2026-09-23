@@ -1,7 +1,7 @@
 {
   "scene":{
     "background-type":"solid",
-    "background":"brown_photostudio.hdr",
+    "background":[0,0,0],
     "models":{
       "path":"models/test-box",
       "scale":1.0,

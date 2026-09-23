@@ -16,6 +16,12 @@ inline int gamma_(const double x) {
   return int(pow(clamp01(x), 1. / 2.2) * 255 + 0.5);
 }
 
+inline TexColor3f gamma_inv(const TexColor3f c) {
+  return TexColor3f(clamp01f(powf(c.x * UINT8_INV, 2.2f)),
+                    clamp01f(powf(c.y * UINT8_INV, 2.2f)),
+                    clamp01f(powf(c.z * UINT8_INV, 2.2f)));
+}
+
 inline void save_ppm(const std::string &filename,
                      const std::vector<Color> &image, const uint32_t width,
                      const uint32_t height) {

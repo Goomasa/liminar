@@ -23,6 +23,7 @@ load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
        std::filesystem::recursive_directory_iterator(project_dir)) {
     if (entry.is_regular_file() && entry.path().filename() == filename) {
       filepath = entry.path().string<char>();
+      break;
     }
   }
 
@@ -64,10 +65,9 @@ load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
     std::vector<TexColor3f> pixels(data_size);
 
     for (uint64_t i = 0; i < data_size; i++) {
-      pixels[i] = TexColor3f(static_cast<float>(data[3 * i]),
-                             static_cast<float>(data[3 * i + 1]),
-                             static_cast<float>(data[3 * i + 2])) *
-                  UINT8_INV;
+      pixels[i] = gamma_inv(TexColor3f(static_cast<float>(data[3 * i]),
+                                       static_cast<float>(data[3 * i + 1]),
+                                       static_cast<float>(data[3 * i + 2])));
     }
 
     std::cout << "loaded: " << filepath << std::endl;
@@ -94,10 +94,9 @@ std::optional<std::vector<TexColor3f>> load_image(const uint8_t *buffer,
   std::vector<TexColor3f> pixels(data_size);
 
   for (uint64_t i = 0; i < data_size; i++) {
-    pixels[i] = TexColor3f(static_cast<float>(data[3 * i]),
-                           static_cast<float>(data[3 * i + 1]),
-                           static_cast<float>(data[3 * i + 2])) *
-                UINT8_INV;
+    pixels[i] = gamma_inv(TexColor3f(static_cast<float>(data[3 * i]),
+                                     static_cast<float>(data[3 * i + 1]),
+                                     static_cast<float>(data[3 * i + 2])));
   }
 
   stbi_image_free(data);

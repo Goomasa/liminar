@@ -437,22 +437,22 @@ private:
 
 class MixtureBrdf : public Bxdf {
 public:
-  double metalic, specular, alpha;
+  double metallic, specular, alpha;
 
-  MixtureBrdf(const Color &base_color, const double metalic,
+  MixtureBrdf(const Color &base_color, const double metallic,
               const double specular, const double roughness,
               Texture *col_tex = nullptr)
-      : Bxdf(base_color, col_tex), metalic(clamp01(metalic)),
+      : Bxdf(base_color, col_tex), metallic(clamp01(metallic)),
         specular(clamp01(specular)),
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
-    diffuse_prob = (1. - metalic) / (2. - metalic);
+    diffuse_prob = (1. - metallic) / (2. - metallic);
   }
 
-  MixtureBrdf(const Color &base_color, const double metalic,
+  MixtureBrdf(const Color &base_color, const double metallic,
               const double roughness, Texture *col_tex = nullptr)
-      : Bxdf(base_color, col_tex), metalic(clamp01(metalic)), specular(0.5),
+      : Bxdf(base_color, col_tex), metallic(clamp01(metallic)), specular(0.5),
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
-    diffuse_prob = (1. - metalic) / (2. - metalic);
+    diffuse_prob = (1. - metallic) / (2. - metallic);
   }
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
@@ -469,8 +469,9 @@ public:
   bool is_specular() const override { return false; }
 
   void display() const override {
-    std::cout << "Mixture , metalic: " << metalic << " , specular: " << specular
-              << " , alpha: " << alpha << " , color: ";
+    std::cout << "Mixture , metallic: " << metallic
+              << " , specular: " << specular << " , alpha: " << alpha
+              << " , color: ";
     base_color.display();
   }
 
@@ -533,6 +534,6 @@ private:
 
   Color fs0(const Color &color) const {
     double t = 0.08 * specular;
-    return metalic * color + (1. - metalic) * Vec3(t);
+    return metallic * color + (1. - metallic) * Vec3(t);
   }
 };

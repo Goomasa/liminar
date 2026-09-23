@@ -3,6 +3,7 @@
 #include "scene/primitive.h"
 #include "scene/texture.h"
 #include "tiny_gltf_v3.h"
+#include "util/image.h"
 #include "util/tg3helper.h"
 #include "util/utils.h"
 #include <cstdint>
@@ -59,9 +60,9 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
 
         if (idx.texcoord_index != -1) {
           const double tu =
-              (double)obj_attrib.texcoords[3 * idx.texcoord_index + 0];
+              (double)obj_attrib.texcoords[2 * idx.texcoord_index + 0];
           const double tv =
-              (double)obj_attrib.texcoords[3 * idx.texcoord_index + 1];
+              (double)obj_attrib.texcoords[2 * idx.texcoord_index + 1];
 
           vertices[v] = Vertex(Point3(vx, vy, vz) * scale + tr,
                                Vec3(nx, ny, nz), Vec2(tu, tv));
@@ -103,7 +104,12 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
           prim.bxdf = bxdf.get();
           bxdfs.emplace_back(std::move(bxdf));
         } else {
-          load_mtl(obj_materials[mtl_idx], &prim);
+          std::unique_ptr<Texture> color_tex;
+          load_mtl(obj_materials[mtl_idx], &prim, &color_tex);
+
+          if (color_tex) {
+            textures.emplace_back(std::move(color_tex));
+          }
         }
 
         prim.bxdf->id = hashed_bxdf_id;
@@ -119,7 +125,8 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
   std::cout << "loaded: " << filename << std::endl;
 }
 
-void Scene::load_mtl(const auto &material, Primitive *prim) {
+void Scene::load_mtl(const auto &material, Primitive *prim,
+                     std::unique_ptr<Texture> *color_tex) {
   const Color kd =
       Vec3(material.diffuse[0], material.diffuse[1], material.diffuse[2]);
 
@@ -136,29 +143,47 @@ void Scene::load_mtl(const auto &material, Primitive *prim) {
     return;
   }
 
+  uint32_t width, height;
+  std::optional<std::vector<TexColor3f>> color_pixels =
+      material.diffuse_texname != ""
+          ? load_image(material.diffuse_texname, &width, &height)
+          : std::nullopt;
+
+  if (color_pixels.has_value()) {
+    *color_tex = std::move(
+        std::make_unique<ImageTexture>(color_pixels.value(), width, height));
+  }
+
+  Texture *color_texture_ptr = color_tex ? color_tex->get() : nullptr;
+
   switch (material.illum) {
   case 3: {
-    bxdf = std::make_unique<Mirror>(kd);
+    bxdf = std::make_unique<Mirror>(kd, color_texture_ptr);
   } break;
   case 5: {
-    auto ns = material.shininess / 1000;
-    bxdf = std::make_unique<MicroBrdf>(kd, ns);
+    // auto ns = material.shininess / 1000;
+    double pr = material.roughness;
+    bxdf = std::make_unique<MicroBrdf>(kd, pr, color_texture_ptr);
   } break;
   case 7: {
     const double ior = material.ior;
-    bxdf = std::make_unique<Glass>(kd, ior);
-  } break;
-  default: {
-    bxdf = std::make_unique<Lambertian>(kd);
+    bxdf = std::make_unique<Glass>(kd, ior, color_texture_ptr);
   } break;
   case 9: {
-    auto ns = material.shininess / 1000;
+    // auto ns = material.shininess / 1000;
+    double pr = material.roughness;
     const double ior = material.ior;
-    bxdf = std::make_unique<MicroBtdf>(kd, ior, ns);
+    bxdf = std::make_unique<MicroBtdf>(kd, ior, pr, color_texture_ptr);
   } break;
   case 11: {
-    auto ns = material.shininess / 1000;
-    bxdf = std::make_unique<MixtureBrdf>(kd, 0., ns);
+    // auto ns = material.shininess / 1000;
+    double pr = material.roughness;
+    double pm = material.metallic;
+    bxdf = std::make_unique<MixtureBrdf>(kd, pm, pr, color_texture_ptr);
+    bxdf.get()->display();
+  } break;
+  default: {
+    bxdf = std::make_unique<Lambertian>(kd, color_texture_ptr);
   } break;
   }
 

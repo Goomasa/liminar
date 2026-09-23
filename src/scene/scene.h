@@ -30,7 +30,8 @@ struct Scene {
   void load_obj(const std::string &filename, const std::string &dir_path,
                 const double scale = 1., const Vec3 &tr = Vec3());
 
-  void load_mtl(const auto &material, Primitive *prim);
+  void load_mtl(const auto &material, Primitive *prim,
+                std::unique_ptr<Texture> *color_tex);
 
   void load_gltf(const std::string &filename, const std::string &dir_path,
                  const double scale = 1., const Vec3 &tr = Vec3());

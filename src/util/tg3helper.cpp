@@ -129,11 +129,11 @@ void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
     for (uint32_t h = 0; h < height; h++) {
       for (uint32_t w = 0; w < width; w++) {
         uint64_t idx = (h * width + w) * channels;
-        float r = tg_image.image.data[idx] * UINT8_INV;
-        float g = tg_image.image.data[idx + 1] * UINT8_INV;
-        float b = tg_image.image.data[idx + 2] * UINT8_INV;
+        float r = static_cast<float>(tg_image.image.data[idx]);
+        float g = static_cast<float>(tg_image.image.data[idx + 1]);
+        float b = static_cast<float>(tg_image.image.data[idx + 2]);
 
-        pixels[h * width + w] = TexColor3f(r, g, b);
+        pixels[h * width + w] = gamma_inv(TexColor3f(r, g, b));
       }
     }
 
@@ -186,7 +186,7 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
       Color(tg_pbr_info.base_color_factor[0], tg_pbr_info.base_color_factor[1],
             tg_pbr_info.base_color_factor[2]);
   double roughness = tg_pbr_info.roughness_factor;
-  double metalic = tg_pbr_info.metallic_factor;
+  double metallic = tg_pbr_info.metallic_factor;
   double ior;
 
   load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, color_tex);
@@ -201,19 +201,19 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                                                     color_texture_ptr));
     }
   } else {
-    if (metalic == 1. && roughness == 0.) {
+    if (metallic == 1. && roughness == 0.) {
       *bxdf =
           std::move(std::make_unique<Mirror>(base_color, color_texture_ptr));
-    } else if (metalic == 0. && roughness == 1.) {
+    } else if (metallic == 0. && roughness == 1.) {
       *bxdf = std::move(
           std::make_unique<Lambertian>(base_color, color_texture_ptr));
-    } else if (metalic == 1.) {
+    } else if (metallic == 1.) {
       *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness,
                                                     color_texture_ptr));
     } else {
       double specular = get_gltf_specular(tg_material);
       *bxdf = std::move(std::make_unique<MixtureBrdf>(
-          base_color, metalic, specular, roughness, color_texture_ptr));
+          base_color, metallic, specular, roughness, color_texture_ptr));
     }
   }
 
