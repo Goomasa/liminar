@@ -70,8 +70,8 @@ public:
     double u = apply_wrap(uv.u, sampler_u);
     double v = apply_wrap(uv.v, sampler_v);
 
-    uint32_t w = uv.u == 1. ? width - 1 : static_cast<uint32_t>(u * width);
-    uint32_t h = uv.v == 1 ? height - 1 : static_cast<uint32_t>(v * height);
+    uint32_t w = u == 1. ? width - 1 : static_cast<uint32_t>(u * width);
+    uint32_t h = v == 1. ? height - 1 : static_cast<uint32_t>(v * height);
     uint64_t idx = static_cast<uint64_t>(width * h + w);
 
     return pixels[idx].to_color();

@@ -60,7 +60,7 @@ Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
     // refract
     if (check_light_leak(wi, wo, normal, geometry_normal) &&
         !check_block_surface(wi, wo, geometry_normal)) {
-      return r_io * r_io * color / fmax(fabs(dot(wi, normal)), EPS) *
+      return r_io * r_io * get_color(uv) / fmax(fabs(dot(wi, normal)), EPS) *
              (1. - reflectance);
     } else {
       return 0.;
@@ -72,7 +72,7 @@ Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
     if (check_light_leak(wi, wo, normal, geometry_normal) &&
         check_block_surface(wi, wo, geometry_normal)) {
-      return color / fmax(fabs(dot(wi, normal)), EPS) * reflectance;
+      return get_color(uv) / fmax(fabs(dot(wi, normal)), EPS) * reflectance;
     } else {
       return 0.;
     }
@@ -128,7 +128,7 @@ Color MicroBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
                       const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
-  Color fresnel = schlick_fresnel(color, wi, wm);
+  Color fresnel = schlick_fresnel(get_color(uv), wi, wm);
 
   if (check_light_leak(wi, wo, normal, geometry_normal) &&
       check_block_surface(wi, wo, geometry_normal)) {
@@ -192,7 +192,7 @@ Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
     if (check_light_leak(wi, wo, normal, geometry_normal) &&
         !check_block_surface(wi, wo, geometry_normal)) {
-      return color * c * (1 - reflectance) * ggx_g2(wi, wo, normal) *
+      return get_color(uv) * c * (1 - reflectance) * ggx_g2(wi, wo, normal) *
              ggx_d(wm, normal) * r_io * r_io / denom;
     } else {
       return 0.;
@@ -209,8 +209,8 @@ Color MicroBtdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
     if (check_light_leak(wi, wo, normal, geometry_normal) &&
         check_block_surface(wi, wo, geometry_normal)) {
-      return color * reflectance * ggx_g2(wi, wo, normal) * ggx_d(wm, normal) /
-             denom;
+      return get_color(uv) * reflectance * ggx_g2(wi, wo, normal) *
+             ggx_d(wm, normal) / denom;
     } else {
       return 0.;
     }
@@ -280,7 +280,7 @@ Color MicroBrdfAniso::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
                            const bool into, const IntegrateMode &mode) const {
   Vec3 wm = normalize(wi + wo);
   double denom = fmax(4 * fabs(dot(wo, normal) * dot(wi, normal)), EPS);
-  Color fresnel = schlick_fresnel(color, wi, wm);
+  Color fresnel = schlick_fresnel(get_color(uv), wi, wm);
 
   if (check_light_leak(wi, wo, normal, geometry_normal) &&
       check_block_surface(wi, wo, geometry_normal)) {

@@ -103,7 +103,7 @@ inline bool load_gltf_data(const tg3_model &tg_model,
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission,
-                        std::unique_ptr<Texture> *texture);
+                        std::unique_ptr<Texture> *color_tex);
 
 Mat4 get_node_transform_mat(const tg3_node &node);
 

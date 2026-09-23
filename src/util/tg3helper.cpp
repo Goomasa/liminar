@@ -166,7 +166,7 @@ void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission,
-                        std::unique_ptr<Texture> *texture) {
+                        std::unique_ptr<Texture> *color_tex) {
   if (tg_prim.material < 0 || tg_prim.material >= tg_model.materials_count) {
     *bxdf = std::move(std::make_unique<Lambertian>(Color(1.)));
     *emission = Color();
@@ -189,28 +189,31 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
   double metalic = tg_pbr_info.metallic_factor;
   double ior;
 
+  load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, color_tex);
+  Texture *color_texture_ptr = color_tex ? color_tex->get() : nullptr;
+
   if (is_transparent(tg_material, &ior)) {
     if (roughness == 0.) {
-      *bxdf = std::move(std::make_unique<Glass>(base_color, ior));
+      *bxdf = std::move(
+          std::make_unique<Glass>(base_color, ior, color_texture_ptr));
     } else {
-      *bxdf =
-          std::move(std::make_unique<MicroBtdf>(base_color, ior, roughness));
+      *bxdf = std::move(std::make_unique<MicroBtdf>(base_color, ior, roughness,
+                                                    color_texture_ptr));
     }
   } else {
-    load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, texture);
-
     if (metalic == 1. && roughness == 0.) {
-      *bxdf = std::move(std::make_unique<Mirror>(base_color));
+      *bxdf =
+          std::move(std::make_unique<Mirror>(base_color, color_texture_ptr));
     } else if (metalic == 0. && roughness == 1.) {
-      *bxdf = std::move(std::make_unique<Lambertian>(
-          base_color, texture ? texture->get() : nullptr));
+      *bxdf = std::move(
+          std::make_unique<Lambertian>(base_color, color_texture_ptr));
     } else if (metalic == 1.) {
-      *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness));
+      *bxdf = std::move(std::make_unique<MicroBrdf>(base_color, roughness,
+                                                    color_texture_ptr));
     } else {
       double specular = get_gltf_specular(tg_material);
       *bxdf = std::move(std::make_unique<MixtureBrdf>(
-          base_color, metalic, specular, roughness,
-          texture ? texture->get() : nullptr));
+          base_color, metalic, specular, roughness, color_texture_ptr));
     }
   }
 

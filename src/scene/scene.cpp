@@ -379,19 +379,20 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
 
         if (corresponding_bxdf) {
           prim.bxdf = corresponding_bxdf->get();
-          prim.emission = load_gltf_emission(tg_model, tg_prim);
+          prim.emission = load_gltf_emission(tg_model, tg_prim) * 5;
         } else {
           std::unique_ptr<Bxdf> bxdf;
-          std::unique_ptr<Texture> texture;
+          std::unique_ptr<Texture> color_texture;
           Color emission;
-          load_gltf_material(tg_model, tg_prim, &bxdf, &emission, &texture);
+          load_gltf_material(tg_model, tg_prim, &bxdf, &emission,
+                             &color_texture);
           bxdf->id = hashed_id;
           prim.bxdf = bxdf.get();
-          prim.emission = emission;
+          prim.emission = emission * 5;
           bxdfs.emplace_back(std::move(bxdf));
 
-          if (texture) {
-            textures.emplace_back(std::move(texture));
+          if (color_texture) {
+            textures.emplace_back(std::move(color_texture));
           }
         }
 

@@ -11,6 +11,11 @@ enum class IntegrateMode { PT };
 class Bxdf {
 public:
   uint64_t id;
+  Color base_color;
+  Texture *color_texture;
+
+  Bxdf(const Color &base_color, Texture *texture)
+      : base_color(base_color), color_texture(texture) {}
 
   virtual ~Bxdf() = default;
   virtual Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
@@ -27,6 +32,14 @@ public:
   virtual void display() const = 0;
 
 protected:
+  inline Color get_color(const Vec2 &uv) const {
+    if (!color_texture) {
+      return base_color;
+    } else {
+      return color_texture->get_color(uv);
+    }
+  }
+
   static Vec3 sample_cosine_hemisphere(const Vec3 &normal, Random *rnd) {
     Vec3 w = normal, u, v;
     if (fabs(w.x) > EPS) {
@@ -101,11 +114,8 @@ protected:
 
 class Lambertian : public Bxdf {
 public:
-  Color color;
-  Texture *texture;
-
-  Lambertian(const Color &color, Texture *texture = nullptr)
-      : color(color), texture(texture) {}
+  Lambertian(const Color &base_color, Texture *texture = nullptr)
+      : Bxdf(base_color, texture) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const Vec3 &geometry_normal, const bool into,
@@ -127,31 +137,21 @@ public:
 
   void display() const override {
     std::cout << "Lambertian, color: ";
-    color.display();
-  }
-
-private:
-  Color get_color(const Vec2 &uv) const {
-    if (!texture) {
-      return color;
-    } else {
-      return texture->get_color(uv);
-    }
+    base_color.display();
   }
 };
 
 class Mirror : public Bxdf {
 public:
-  Color color;
-
-  Mirror(const Color &color) : color(color) {}
+  Mirror(const Color &base_color, Texture *texture = nullptr)
+      : Bxdf(base_color, texture) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const Vec3 &geometry_normal, const bool into,
              const IntegrateMode &mode) const override {
     return check_light_leak(wi, wo, normal, geometry_normal) &&
                    check_block_surface(wi, wo, geometry_normal)
-               ? color / fabs(dot(wi, normal))
+               ? get_color(uv) / fabs(dot(wi, normal))
                : 0.;
   }
 
@@ -170,16 +170,16 @@ public:
 
   void display() const override {
     std::cout << "Mirror, color: ";
-    color.display();
+    base_color.display();
   }
 };
 
 class Glass : public Bxdf {
 public:
-  Color color;
   double ior;
 
-  Glass(const Color &color, const double ior) : color(color), ior(ior) {}
+  Glass(const Color &base_color, const double ior, Texture *texture = nullptr)
+      : Bxdf(base_color, texture), ior(ior) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const Vec3 &geometry_normal, const bool into,
@@ -196,18 +196,19 @@ public:
 
   void display() const override {
     std::cout << "Glass, ior: " << ior << " , color: ";
-    color.display();
+    base_color.display();
   }
 };
 
 class MicroBrdf : public Bxdf {
   // isotropic
 public:
-  Color color;
   double alpha;
 
-  MicroBrdf(const Color &color, const double roughness)
-      : color(color), alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
+  MicroBrdf(const Color &base_color, const double roughness,
+            Texture *texture = nullptr)
+      : Bxdf(base_color, texture),
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
              const Vec3 &geometry_normal, const bool into,
@@ -228,7 +229,7 @@ public:
 
   void display() const override {
     std::cout << "Microfacet brdf, alpha: " << alpha << " , color: ";
-    color.display();
+    base_color.display();
   }
 
 private:
@@ -256,12 +257,12 @@ private:
 
 class MicroBtdf : public Bxdf {
 public:
-  Color color;
   double ior;
   double alpha;
 
-  MicroBtdf(const Color &color, const double ior, const double roughness)
-      : color(color), ior(ior),
+  MicroBtdf(const Color &base_color, const double ior, const double roughness,
+            Texture *texture = nullptr)
+      : Bxdf(base_color, texture), ior(ior),
         alpha(std::clamp(roughness * roughness, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
@@ -280,7 +281,7 @@ public:
   void display() const override {
     std::cout << "Microfacet btdf, ior: " << ior << " , alpha: " << alpha
               << " , color: ";
-    color.display();
+    base_color.display();
   }
 
 private:
@@ -353,12 +354,12 @@ private:
 
 class MicroBrdfAniso : public Bxdf {
 public:
-  Color color;
   double alpha_x, alpha_y;
 
-  MicroBrdfAniso(const Color &color, const double roughness_x,
-                 const double roughness_y)
-      : color(color), alpha_x(std::clamp(roughness_x * roughness_x, 0.001, 1.)),
+  MicroBrdfAniso(const Color &base_color, const double roughness_x,
+                 const double roughness_y, Texture *texture = nullptr)
+      : Bxdf(base_color, texture),
+        alpha_x(std::clamp(roughness_x * roughness_x, 0.001, 1.)),
         alpha_y(std::clamp(roughness_y * roughness_y, 0.001, 1.)) {}
 
   Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
@@ -381,7 +382,7 @@ public:
   void display() const override {
     std::cout << "Microfacet brdf, alpha-x: " << alpha_x
               << " , alpha-y: " << alpha_y << " , color: ";
-    color.display();
+    base_color.display();
   }
 
 private:
@@ -436,26 +437,21 @@ private:
 
 class MixtureBrdf : public Bxdf {
 public:
-  Color base_color;
   double metalic, specular, alpha;
-  Texture *color_texture;
-  Texture *metalic_roughness_texture;
 
-  MixtureBrdf(const Color &color, const double metalic, const double specular,
-              const double roughness, Texture *col_tex = nullptr,
-              Texture *mr_tex = nullptr)
-      : base_color(color), metalic(clamp01(metalic)),
+  MixtureBrdf(const Color &base_color, const double metalic,
+              const double specular, const double roughness,
+              Texture *col_tex = nullptr)
+      : Bxdf(base_color, col_tex), metalic(clamp01(metalic)),
         specular(clamp01(specular)),
-        alpha(std::clamp(roughness * roughness, 0.001, 1.)),
-        color_texture(col_tex), metalic_roughness_texture(mr_tex) {
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
     diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
-  MixtureBrdf(const Color &color, const double metalic, const double roughness,
-              Texture *col_tex = nullptr, Texture *mr_tex = nullptr)
-      : base_color(color), metalic(clamp01(metalic)), specular(0.5),
-        alpha(std::clamp(roughness * roughness, 0.001, 1.)),
-        color_texture(col_tex), metalic_roughness_texture(mr_tex) {
+  MixtureBrdf(const Color &base_color, const double metalic,
+              const double roughness, Texture *col_tex = nullptr)
+      : Bxdf(base_color, col_tex), metalic(clamp01(metalic)), specular(0.5),
+        alpha(std::clamp(roughness * roughness, 0.001, 1.)) {
     diffuse_prob = (1. - metalic) / (2. - metalic);
   }
 
@@ -538,13 +534,5 @@ private:
   Color fs0(const Color &color) const {
     double t = 0.08 * specular;
     return metalic * color + (1. - metalic) * Vec3(t);
-  }
-
-  Color get_color(const Vec2 &uv) const {
-    if (!color_texture) {
-      return base_color;
-    } else {
-      return color_texture->get_color(uv);
-    }
   }
 };
