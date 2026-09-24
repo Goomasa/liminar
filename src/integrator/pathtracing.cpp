@@ -19,7 +19,7 @@ inline double roullete(const uint32_t depth) {
   }
 }
 
-void Integrator::integrate(Scene *scene, Ray ray, Random *rnd) {
+void Integrator::pt_integrate(Scene *scene, Ray ray, Random *rnd) {
   const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray;
   HitRecord record = HitRecord();

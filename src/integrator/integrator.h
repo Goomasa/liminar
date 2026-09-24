@@ -20,7 +20,7 @@ public:
 
   void reset() { value = Color(); }
 
-  void integrate(Scene *scene, Ray ray, Random *rnd);
+  void pt_integrate(Scene *scene, Ray ray, Random *rnd);
 
   void mis_integrate(Scene *scene, Ray ray, Random *rnd);
 

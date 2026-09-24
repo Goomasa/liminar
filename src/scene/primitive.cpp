@@ -155,3 +155,30 @@ Point3 Disk::sample_surface(Random *rnd, double *pdf) const {
   *pdf = 1. / (PI * radius * radius);
   return center + u * r * cos(theta) + v * r * sin(theta);
 }
+
+bool Square::hit(Ray &ray, HitRecord *record) const {
+  if (fabs(ray.dir[vertical_axis]) < EPS) {
+    return false;
+  }
+
+  double t =
+      (minp[vertical_axis] - ray.org[vertical_axis]) / ray.dir[vertical_axis];
+  if (t > record->distance) {
+    return false;
+  }
+
+  Point3 pos = ray.dir * t + ray.org;
+  uint8_t a1 = (vertical_axis + 1) % 3, a2 = (vertical_axis + 2) % 3;
+
+  if (pos[a1] < minp[a1] || pos[a1] > maxp[a1] || pos[a2] < minp[a2] ||
+      pos[a2] > maxp[a2]) {
+    return false;
+  }
+
+  record->distance = t;
+  record->hitpoint = pos;
+  record->geometry_normal = normal;
+  record->normal = normal;
+  record->uv = get_texcoord(pos);
+  return true;
+}

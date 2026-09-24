@@ -225,7 +225,7 @@ Mat4 get_node_transform_mat(const tg3_node &node) {
   Mat4 m = Mat4();
   for (int row = 0; row < 4; ++row) {
     for (int col = 0; col < 4; ++col) {
-      m.e[row][col] = node.matrix[row * 4 + col];
+      m.e[row][col] = node.matrix[col * 4 + row];
     }
   }
 
@@ -278,20 +278,20 @@ Mat4 get_normal_transform_mat(const Mat4 &m) {
     return m;
   }
 
-  double invDet = 1.0 / det;
+  double inv_det = 1.0 / det;
   Mat4 inv = Mat4();
 
-  inv.e[0][0] = (e * i - f * h) * invDet;
-  inv.e[0][1] = (c * h - b * i) * invDet;
-  inv.e[0][2] = (b * f - c * e) * invDet;
+  inv.e[0][0] = (e * i - f * h) * inv_det;
+  inv.e[0][1] = (c * h - b * i) * inv_det;
+  inv.e[0][2] = (b * f - c * e) * inv_det;
 
-  inv.e[1][0] = (f * g - d * i) * invDet;
-  inv.e[1][1] = (a * i - c * g) * invDet;
-  inv.e[1][2] = (c * d - a * f) * invDet;
+  inv.e[1][0] = (f * g - d * i) * inv_det;
+  inv.e[1][1] = (a * i - c * g) * inv_det;
+  inv.e[1][2] = (c * d - a * f) * inv_det;
 
-  inv.e[2][0] = (d * h - e * g) * invDet;
-  inv.e[2][1] = (b * g - a * h) * invDet;
-  inv.e[2][2] = (a * e - b * d) * invDet;
+  inv.e[2][0] = (d * h - e * g) * inv_det;
+  inv.e[2][1] = (b * g - a * h) * inv_det;
+  inv.e[2][2] = (a * e - b * d) * inv_det;
 
   return inv.transpose();
 }

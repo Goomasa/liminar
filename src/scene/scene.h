@@ -104,4 +104,6 @@ private:
   void set_test_primitive();
 
   void set_sample_scene1();
+
+  void model_lobby();
 };

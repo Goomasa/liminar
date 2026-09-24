@@ -18,10 +18,11 @@ constexpr uint32_t MAX_WIDTH_HEIGHT = 16384;
 std::optional<std::vector<TexColor3f>>
 load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
   std::filesystem::path project_dir = ".";
-  std::string filepath;
+  std::filesystem::path tmp_path = filename;
+  std::string filepath = tmp_path.filename();
   for (const auto &entry :
        std::filesystem::recursive_directory_iterator(project_dir)) {
-    if (entry.is_regular_file() && entry.path().filename() == filename) {
+    if (entry.is_regular_file() && entry.path().filename() == filepath) {
       filepath = entry.path().string<char>();
       break;
     }

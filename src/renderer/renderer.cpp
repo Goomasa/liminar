@@ -1,7 +1,7 @@
 #include "renderer.h"
 #include "config/parser.h"
+#include "integrator/integrator.h"
 #include "renderer/camera.h"
-#include "renderer/integrator.h"
 #include "scene/scene.h"
 #include "scene/texture.h"
 #include "util/image.h"
