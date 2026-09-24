@@ -163,7 +163,7 @@ bool Square::hit(Ray &ray, HitRecord *record) const {
 
   double t =
       (minp[vertical_axis] - ray.org[vertical_axis]) / ray.dir[vertical_axis];
-  if (t > record->distance) {
+  if (t > record->distance || t < 0.) {
     return false;
   }
 
@@ -181,4 +181,23 @@ bool Square::hit(Ray &ray, HitRecord *record) const {
   record->normal = normal;
   record->uv = get_texcoord(pos);
   return true;
+}
+
+Vec2 Square::get_texcoord(const Vec3 &pos) const {
+  if (tex_len < EPS) {
+    return Vec2(0.5);
+  }
+
+  double du, dv;
+  if (vertical_axis == 0) {
+    du = pos.z - minp.z, dv = maxp.y - pos.y;
+  } else if (vertical_axis == 1) {
+    du = pos.z - minp.z, dv = maxp.x - pos.x;
+  } else {
+    du = pos.x - minp.x, dv = maxp.y - pos.y;
+  }
+
+  double u = du / tex_len - std::floor(du / tex_len);
+  double v = dv / tex_len - std::floor(dv / tex_len);
+  return Vec2(u, v);
 }

@@ -230,50 +230,46 @@ public:
 class Square : public Shape {
 public:
   Point3 minp, maxp;
-  double length;
   Vec3 normal;
-  uint8_t vertical_axis;
-  uint32_t texture_iter;
+  uint8_t vertical_axis; // 0 -> x, 1 -> y, 2 -> z
+  double l1, l2, tex_len;
 
-  Square(const Point3 &minp, const double len, const Vec3 &normal,
-         const uint32_t tex_iter)
-      : minp(minp), normal(normalize(normal)), length(len),
-        texture_iter(tex_iter) {
-    if (normal.x != 0.) {
-      vertical_axis = 0;
-    } else if (normal.y != 0.) {
-      vertical_axis = 1;
-    } else {
-      vertical_axis = 2;
-    }
-
+  Square(const Point3 &minp_, const Point3 &maxp_, const Vec3 &normal,
+         const uint8_t axis, const double tex_len)
+      : normal(normalize(normal)), vertical_axis(axis), tex_len(tex_len) {
+    minp = vmin(minp_, maxp_);
+    maxp = vmax(minp_, maxp_);
     maxp.set(minp[vertical_axis], vertical_axis);
-    maxp.set(minp[(vertical_axis + 1) % 3] + len, (vertical_axis + 1) % 3);
-    maxp.set(minp[(vertical_axis + 2) % 3] + len, (vertical_axis + 2) % 3);
+
+    l1 = (maxp - minp)[(vertical_axis + 1) % 3];
+    l2 = (maxp - minp)[(vertical_axis + 2) % 3];
   }
+
+  AABB get_bbox() const override { return AABB(minp, maxp).fix(); }
 
   bool hit(Ray &ray, HitRecord *record) const override;
 
   Point3 get_center() const override { return (minp + maxp) * 0.5; }
 
-  double get_area() const override { return length * length; }
+  double get_area() const override { return l1 * l2; }
 
-  double pdf_sample_surface_area() const override {
-    return 1. / (length * length);
-  }
+  double pdf_sample_surface_area() const override { return 1. / (l1 * l2); }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override {
-    double du = length * rnd->gen();
-    double dv = length * rnd->gen();
-    Vec3 d = Vec3();
-    d.set(du, (vertical_axis + 1) % 3);
-    d.set(dv, (vertical_axis + 2) % 3);
-    return minp + d;
+    *pdf = 1. / (l1 * l2);
+    double du = l1 * rnd->gen(), dv = l2 * rnd->gen();
+    if (vertical_axis == 0) {
+      return minp + Vec3(0, du, dv);
+    } else if (vertical_axis == 1) {
+      return minp + Vec3(dv, 0, du);
+    } else {
+      return minp + Vec3(du, dv, 0);
+    }
   }
 
   Vec3 get_normal(const Point3 &pos) const override { return normal; }
 
-  Vec2 get_texcoord(const Vec3 &pos) const override { return Vec2(0.5); }
+  Vec2 get_texcoord(const Vec3 &pos) const override;
 };
 
 class Primitive {

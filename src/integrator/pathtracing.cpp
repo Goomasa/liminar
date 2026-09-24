@@ -192,6 +192,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
   HitRecord record = HitRecord(), test_record = HitRecord();
   Color throughput = Color(1.);
   double pdf = 1., prev_pdf_bxdf;
+  bool prev_is_specular = false;
 
   for (uint32_t depth = 0;; depth++) {
     record.reset();
@@ -216,9 +217,8 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
           dot(normalize(to_light),
               -1. * prim->shape->get_normal(record.hitpoint));
       double mis_weight =
-          prim->bxdf->is_specular()
-              ? 1.
-              : prev_pdf_bxdf / (pdf_sample_light + prev_pdf_bxdf);
+          prev_is_specular ? 1.
+                           : prev_pdf_bxdf / (pdf_sample_light + prev_pdf_bxdf);
 
       value = value + prim->emission * mis_weight * (throughput / pdf);
       break;
@@ -295,5 +295,6 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
     prev_pdf_bxdf =
         prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
     pdf *= prev_pdf_bxdf;
+    prev_is_specular = prim->bxdf->is_specular();
   }
 }

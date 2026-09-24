@@ -149,7 +149,6 @@ void Renderer::set_scene(ObjectNode &node) {
   std::cout << "size of primitives: " << scene->primitives.size() << std::endl;
   std::cout << "size of bxdfs: " << scene->bxdfs.size() << std::endl;
   std::cout << "size of textures: " << scene->textures.size() << std::endl;
-  std::cout << "size of lights: " << scene->lights.size() << std::endl;
 }
 
 void Renderer::render() const {

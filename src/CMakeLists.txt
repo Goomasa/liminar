@@ -6,6 +6,7 @@ set(exe_file
     scene/scene.cpp
     scene/bvh.cpp
     scene/primitive.cpp
+    scene/lobby.cpp
     config/lexer.cpp
     config/parser.cpp
     util/image.cpp

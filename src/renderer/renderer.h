@@ -20,7 +20,7 @@ public:
     set_scene(node);
     set_renderer(node);
 
-    scene->construct_bvh(is_test);
+    scene->setup(is_test);
 
     std::chrono::system_clock::time_point start, end;
     start = std::chrono::system_clock::now();

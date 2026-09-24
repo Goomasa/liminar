@@ -1,9 +1,11 @@
 #pragma once
 
+#include "scene/texture.h"
 #include "util/utils.h"
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -44,6 +46,8 @@ inline void save_ppm(const std::string &filename,
 
 std::optional<std::vector<TexColor3f>>
 load_image(const std::string &filename, uint32_t *width, uint32_t *height);
+
+void load_image(const std::string &filename, std::unique_ptr<Texture> *texture);
 
 std::optional<std::vector<TexColor3f>> load_image(const uint8_t *buffer,
                                                   const size_t size,

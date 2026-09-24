@@ -18,6 +18,8 @@ struct AABB {
     return 2. * (d.x * d.y + d.y * d.z + d.z * d.x);
   }
 
+  inline Point3 get_center() const { return (bmin + bmax) * 0.5; }
+
   bool hit(Ray &ray, const HitRecord *record) const {
     double tmin = 0., tmax = INF;
     for (int a = 0; a < 3; a++) {

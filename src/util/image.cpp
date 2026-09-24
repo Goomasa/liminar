@@ -1,7 +1,9 @@
 #include "image.h"
+#include "scene/texture.h"
 #include "util/utils.h"
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 
 #define STBI_NO_TGA
 #define STBI_NO_PSD
@@ -74,6 +76,18 @@ load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
     std::cout << "loaded: " << filepath << std::endl;
     stbi_image_free(data);
     return pixels;
+  }
+}
+
+void load_image(const std::string &filename,
+                std::unique_ptr<Texture> *texture) {
+  uint32_t width, height;
+  std::optional<std::vector<TexColor3f>> pixels =
+      load_image(filename, &width, &height);
+
+  if (pixels.has_value()) {
+    *texture = std::move(
+        std::make_unique<ImageTexture>(pixels.value(), width, height));
   }
 }
 

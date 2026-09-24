@@ -25,6 +25,7 @@ struct Scene {
   Scene(std::unique_ptr<Texture> &background)
       : background(std::move(background)) {
     set_test_primitive();
+    // model_lobby();
   }
 
   void load_obj(const std::string &filename, const std::string &dir_path,
@@ -36,7 +37,15 @@ struct Scene {
   void load_gltf(const std::string &filename, const std::string &dir_path,
                  const double scale = 1., const Vec3 &tr = Vec3());
 
-  inline void construct_bvh(const bool is_test = false) {
+  inline void setup(const bool is_test = false) {
+    for (Primitive &prim : primitives) {
+      if (prim.is_light()) {
+        lights.emplace_back(prim.id);
+      }
+    }
+
+    std::cout << "size of lights: " << lights.size() << std::endl;
+
     bvh = BVH(primitives, is_test);
   }
 

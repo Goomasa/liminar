@@ -115,10 +115,6 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
         prim.bxdf->id = hashed_bxdf_id;
       }
 
-      if (prim.is_light()) {
-        lights.emplace_back(prim.id);
-      }
-
       primitives.emplace_back(std::move(prim));
     }
   }
@@ -143,17 +139,9 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
     return;
   }
 
-  uint32_t width, height;
-  std::optional<std::vector<TexColor3f>> color_pixels =
-      material.diffuse_texname != ""
-          ? load_image(material.diffuse_texname, &width, &height)
-          : std::nullopt;
-
-  if (color_pixels.has_value()) {
-    *color_tex = std::move(
-        std::make_unique<ImageTexture>(color_pixels.value(), width, height));
+  if (material.diffuse_texname != "") {
+    load_image(material.diffuse_texname, color_tex);
   }
-
   Texture *color_texture_ptr = *color_tex ? color_tex->get() : nullptr;
 
   switch (material.illum) {
@@ -180,7 +168,7 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
     double pr = material.roughness;
     double pm = material.metallic;
     bxdf = std::make_unique<MixtureBrdf>(kd, pm, pr, color_texture_ptr);
-    bxdf.get()->display();
+    // bxdf.get()->display();
   } break;
   default: {
     bxdf = std::make_unique<Lambertian>(kd, color_texture_ptr);
@@ -421,10 +409,6 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
           }
         }
 
-        if (prim.is_light()) {
-          lights.emplace_back(prim.id);
-        }
-
         primitives.emplace_back(std::move(prim));
         shapes.emplace_back(std::move(shape));
       }
@@ -462,7 +446,7 @@ bool Scene::intersect(Ray &ray, HitRecord *record,
 
 void Scene::set_test_primitive() {
   // std::unique_ptr<Shape> sphere =
-  //     std::make_unique<Sphere>(Point3(12, 7, -15), 7);
+  //   std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Shape> sphere =
       std::make_unique<Sphere>(Point3(0, 25, 0), 15);
   std::unique_ptr<Bxdf> bxdf =
@@ -472,9 +456,17 @@ void Scene::set_test_primitive() {
   // shapes.emplace_back(std::move(sphere));
   // bxdfs.emplace_back(std::move(bxdf));
 
+  std::unique_ptr<Shape> sphere3 =
+      std::make_unique<Sphere>(Point3(-25, 3, -100), 3);
+  std::unique_ptr<Bxdf> bxdf3 = std::make_unique<Mirror>(Color(1.));
+  Primitive prim3 = Primitive(sphere3.get(), bxdf3.get(), primitives.size());
+  // primitives.emplace_back(std::move(prim3));
+  // shapes.emplace_back(std::move(sphere3));
+  // bxdfs.emplace_back(std::move(bxdf3));
+
   std::unique_ptr<Shape> cylinder =
-      std::make_unique<Cylinder>(Point3(12, 7, -12), Vec3(-0.3, 0, -1), 7, 10);
-  std::unique_ptr<Bxdf> bxdf2 = std::make_unique<Lambertian>(Color(1.));
+      std::make_unique<Cylinder>(Point3(-15, 5, -15), Vec3(1, 0, 1), 5, 10);
+  std::unique_ptr<Bxdf> bxdf2 = std::make_unique<Lambertian>(Color(0.5, 1, 1));
   Primitive prim2 = Primitive(cylinder.get(), bxdf2.get(), primitives.size());
   // primitives.emplace_back(std::move(prim2));
   // shapes.emplace_back(std::move(cylinder));
