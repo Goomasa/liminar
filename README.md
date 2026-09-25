@@ -1,7 +1,7 @@
 # Liminar
 ***Liminal space Renderer***
 
-<img src="images/lobby2.jpg"/>
+<img src="images/lobby1.jpg"/>
 
 ## Features
 
@@ -29,7 +29,7 @@ cmake --build build --config Release
 ## Gallery
 <img src="images/cornell-sphere.jpg" width=60% height=60%/>
 
-<img src="images/lobby1.jpg" width=60% height=60%/>
+<img src="images/lobby2.jpg" width=60% height=60%/>
 
 <img src="images/fromage.jpg" width=60% height=60%/>
     
