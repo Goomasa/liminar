@@ -152,8 +152,8 @@ void Renderer::set_scene(ObjectNode &node) {
 }
 
 void Renderer::render() const {
-  uint32_t resolution_w = camera->get_resolution_w();
-  uint32_t resolution_h = camera->get_resolution_h();
+  uint32_t resolution_w = camera->resolution_w;
+  uint32_t resolution_h = camera->resolution_h;
   std::vector<Color> image(resolution_w * resolution_h);
   uint32_t pixel_num = resolution_w * resolution_h;
   double total_inv =
@@ -181,7 +181,7 @@ void Renderer::render() const {
             integrator.mis_integrate(scene.get(), ray, &rnd);
             accumlated =
                 accumlated + integrator.get_value() *
-                                 camera->get_coefficient(ray, pixel_pos);
+                                 camera->get_pt_coefficient(ray, pixel_pos);
           }
         }
       }
@@ -194,8 +194,8 @@ void Renderer::render() const {
 }
 
 void Renderer::test_render() const {
-  uint32_t resolution_w = camera->get_resolution_w();
-  uint32_t resolution_h = camera->get_resolution_h();
+  uint32_t resolution_w = camera->resolution_w;
+  uint32_t resolution_h = camera->resolution_h;
   std::vector<Color> image(resolution_w * resolution_h);
   uint32_t pixel_num = resolution_w * resolution_h;
 
