@@ -64,3 +64,7 @@ struct HitpointInfo {
 std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera, Ray ray,
                                        const Point3 &px_pos, Color *final_value,
                                        Random *rnd);
+
+std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
+                                         uint32_t *px_u, uint32_t *px_v,
+                                         Color *final_value, Random *rnd);

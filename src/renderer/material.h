@@ -31,15 +31,6 @@ public:
 
   virtual void display() const = 0;
 
-protected:
-  inline Color get_color(const Vec2 &uv) const {
-    if (!color_texture) {
-      return base_color;
-    } else {
-      return color_texture->get_color(uv) * base_color;
-    }
-  }
-
   static Vec3 sample_cosine_hemisphere(const Vec3 &normal, Random *rnd) {
     Vec3 w = normal, u, v;
     if (fabs(w.x) > EPS) {
@@ -55,6 +46,15 @@ protected:
 
     return normalize(u * sin_theta * cos(phi) + v * sin_theta * sin(phi) +
                      w * sqrt(1 - sin_theta2));
+  }
+
+protected:
+  inline Color get_color(const Vec2 &uv) const {
+    if (!color_texture) {
+      return base_color;
+    } else {
+      return color_texture->get_color(uv) * base_color;
+    }
   }
 
   inline static Vec3 reflection_dir(const Vec3 &dir_prev, const Vec3 &normal) {

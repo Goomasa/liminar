@@ -32,7 +32,8 @@ public:
                                const Vec3 &normal) const = 0;
 
   virtual double pdf_sample_lens_hole() const = 0;
-  virtual bool intersect_lens(Ray &ray, Point3 *px_pos, Point3 *lens_pos,
+  virtual bool intersect_lens(Ray &ray, const double max_distance,
+                              Point3 *px_pos, Point3 *lens_pos,
                               Point3 *objplane_pos, uint32_t *px_u,
                               uint32_t *px_v) const = 0;
   virtual Point3 get_objplane_position(const Point3 &lens_pos,
@@ -104,8 +105,8 @@ public:
 
   double pdf_sample_lens_hole() const override { return 1.; }
 
-  bool intersect_lens(Ray &ray, Point3 *px_pos, Point3 *lens_pos,
-                      Point3 *objplane_pos, uint32_t *px_u,
+  bool intersect_lens(Ray &ray, const double max_distance, Point3 *px_pos,
+                      Point3 *lens_pos, Point3 *objplane_pos, uint32_t *px_u,
                       uint32_t *px_v) const override {
     return false;
   }
@@ -207,11 +208,11 @@ public:
     return 1. / (PI * lens_radius * lens_radius);
   }
 
-  bool intersect_lens(Ray &ray, Point3 *px_pos, Point3 *lens_pos,
-                      Point3 *objplane_pos, uint32_t *px_u,
+  bool intersect_lens(Ray &ray, const double max_distance, Point3 *px_pos,
+                      Point3 *lens_pos, Point3 *objplane_pos, uint32_t *px_u,
                       uint32_t *px_v) const override {
     double lens_t = intersect_plane(ray, lens_center, sensor_dir);
-    if (lens_t < EPS) {
+    if (lens_t < EPS || lens_t > max_distance) {
       return false;
     }
 
