@@ -11,9 +11,11 @@ constexpr double W_SCALE_COEFF = 0.05;
 class Camera {
 public:
   uint32_t resolution_w, resolution_h;
+  Vec3 sensor_dir;
 
-  Camera(uint32_t reso_w, uint32_t reso_h)
-      : resolution_w(reso_w), resolution_h(reso_h) {}
+  Camera(uint32_t reso_w, uint32_t reso_h, const Vec3 &sensor_dir_)
+      : resolution_w(reso_w), resolution_h(reso_h),
+        sensor_dir(normalize(sensor_dir_)) {}
   virtual ~Camera() = default;
   virtual double get_pt_coefficient(const Ray &ray,
                                     const Point3 &pixel_pos) const = 0;
@@ -33,6 +35,8 @@ public:
   virtual bool intersect_lens(Ray &ray, Point3 *px_pos, Point3 *lens_pos,
                               Point3 *objplane_pos, uint32_t *px_u,
                               uint32_t *px_v) const = 0;
+  virtual Point3 get_objplane_position(const Point3 &lens_pos,
+                                       const Point3 &x1) const = 0;
 };
 
 class PinholeModel : public Camera {
@@ -41,8 +45,8 @@ public:
                const Point3 &sensor_center, const double sensor_w,
                const Vec3 &sensor_dir_, const double sensor_to_hole,
                const double w_scale)
-      : Camera(reso_w, reso_h), sensor_center(sensor_center),
-        sensor_width(sensor_w), sensor_dir(normalize(sensor_dir_)) {
+      : Camera(reso_w, reso_h, sensor_dir_), sensor_center(sensor_center),
+        sensor_width(sensor_w) {
     sensor_height = sensor_w * ((double)resolution_h / (double)resolution_w);
     hole_pos = sensor_center + sensor_dir * sensor_to_hole;
 
@@ -68,9 +72,8 @@ public:
   }
 
   Ray get_first_ray(Random *rnd, const Point3 &pixel_pos) const override {
-    Point3 org = pixel_pos;
-    Vec3 dir = normalize(hole_pos - org);
-    return Ray(org, dir);
+    Vec3 dir = normalize(hole_pos - pixel_pos);
+    return Ray(hole_pos, dir);
   }
 
   Point3 get_pixel_pos(uint32_t px_u, uint32_t px_v, uint32_t spx_u,
@@ -107,10 +110,14 @@ public:
     return false;
   }
 
+  Point3 get_objplane_position(const Point3 &lens_pos,
+                               const Point3 &x1) const override {
+    return INVALID_VEC;
+  }
+
 private:
   Point3 sensor_center, sensor_corner;
   double sensor_width, sensor_height;
-  Vec3 sensor_dir;
   double pixel_width, pixel_height;
   Vec3 sensor_u, sensor_v;
 
@@ -125,10 +132,9 @@ public:
             const Vec3 &sensor_dir_, const double sensor_to_lens,
             const double lens_radius, const double focal_dist,
             const double w_scale)
-      : Camera(reso_w, reso_h), sensor_center(sensor_center),
-        sensor_width(sensor_w), sensor_dir(normalize(sensor_dir_)),
-        sensor_to_lens(sensor_to_lens), lens_radius(lens_radius),
-        focal_distance(focal_dist) {
+      : Camera(reso_w, reso_h, sensor_dir_), sensor_center(sensor_center),
+        sensor_width(sensor_w), sensor_to_lens(sensor_to_lens),
+        lens_radius(lens_radius), focal_distance(focal_dist) {
     sensor_height = sensor_w * ((double)resolution_h / (double)resolution_w);
 
     pixel_width = sensor_width / (double)resolution_w;
@@ -204,8 +210,8 @@ public:
   bool intersect_lens(Ray &ray, Point3 *px_pos, Point3 *lens_pos,
                       Point3 *objplane_pos, uint32_t *px_u,
                       uint32_t *px_v) const override {
-    double lens_t;
-    if (!intersect_plane(ray, &lens_t, lens_center, sensor_dir)) {
+    double lens_t = intersect_plane(ray, lens_center, sensor_dir);
+    if (lens_t < EPS) {
       return false;
     }
 
@@ -215,9 +221,9 @@ public:
       return false;
     }
 
-    double objplane_t;
     Vec3 objplane_center = lens_center + sensor_dir * focal_distance;
-    if (!intersect_plane(ray, &objplane_t, objplane_center, sensor_dir)) {
+    double objplane_t = intersect_plane(ray, objplane_center, sensor_dir);
+    if (fabs(objplane_t) < EPS) {
       return false;
     }
 
@@ -237,10 +243,18 @@ public:
     return true;
   }
 
+  Point3 get_objplane_position(const Point3 &lens_pos,
+                               const Point3 &x1) const override {
+    Ray to_objplane = Ray(lens_pos, normalize(x1 - lens_pos));
+    Vec3 objplane_center = lens_center + sensor_dir * focal_distance;
+    double objplane_t =
+        intersect_plane(to_objplane, objplane_center, sensor_dir);
+    return lens_pos + to_objplane.dir * objplane_t;
+  }
+
 private:
   Point3 sensor_center, sensor_corner;
   double sensor_width, sensor_height;
-  Vec3 sensor_dir;
   double pixel_width, pixel_height;
   Vec3 sensor_u, sensor_v;
 
@@ -258,14 +272,13 @@ private:
     return lens_center + sensor_u * r * cos(theta) + sensor_v * r * sin(theta);
   }
 
-  bool intersect_plane(Ray &ray, double *distance, const Point3 &pos_on_plane,
-                       const Vec3 &normal) const {
+  inline double intersect_plane(Ray &ray, const Point3 &pos_on_plane,
+                                const Vec3 &normal) const {
     double dn = dot(ray.dir, normal);
     if (fabs(dn) < EPS) {
-      return false;
+      return 0.;
     }
 
-    *distance = dot(normal, pos_on_plane - ray.org) / dn;
-    return true;
+    return dot(normal, pos_on_plane - ray.org) / dn;
   }
 };

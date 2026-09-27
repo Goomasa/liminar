@@ -1,8 +1,9 @@
 set(exe_file
     main.cpp
     renderer/material.cpp
-    integrator/pathtracing.cpp
     renderer/renderer.cpp
+    integrator/pathtracing.cpp
+    integrator/bidirection.cpp
     scene/scene.cpp
     scene/bvh.cpp
     scene/primitive.cpp

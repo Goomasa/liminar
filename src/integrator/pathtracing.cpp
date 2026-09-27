@@ -6,19 +6,6 @@
 #include <cmath>
 #include <cstdint>
 
-constexpr uint32_t DEPTH = 5;
-constexpr uint32_t MAX_DEPTH = 10;
-
-inline double roullete(const uint32_t depth) {
-  if (depth < DEPTH) {
-    return 1.0;
-  } else if (depth > MAX_DEPTH) {
-    return 0.;
-  } else {
-    return 0.8;
-  }
-}
-
 void Integrator::pt_integrate(Scene *scene, Ray ray, Random *rnd) {
   const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray;

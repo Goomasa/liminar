@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-enum class IntegrateMode { PT };
+enum class IntegrateMode { PT, LT };
 
 class Bxdf {
 public:
