@@ -1,5 +1,6 @@
 #include "scene.h"
 #include "renderer/material.h"
+#include "renderer/ray.h"
 #include "scene/primitive.h"
 #include "scene/texture.h"
 #include "tiny_gltf_v3.h"

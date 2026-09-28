@@ -4,6 +4,8 @@
 #include "config/parser.h"
 #include "renderer/material.h"
 #include "scene/scene.h"
+#include "util/utils.h"
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -62,4 +64,18 @@ private:
   void set_camera(ObjectNode &node);
 
   void set_renderer(ObjectNode &node);
+};
+
+struct AtomicColor {
+  std::atomic<double> r{0.0};
+  std::atomic<double> g{0.0};
+  std::atomic<double> b{0.0};
+
+  void add(const Color &c) {
+    r.fetch_add(c.x, std::memory_order_relaxed);
+    g.fetch_add(c.y, std::memory_order_relaxed);
+    b.fetch_add(c.z, std::memory_order_relaxed);
+  }
+
+  Color to_color() const { return Color(r, g, b); }
 };

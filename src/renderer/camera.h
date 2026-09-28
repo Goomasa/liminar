@@ -123,17 +123,20 @@ public:
                            Point3 *lens_pos, Point3 *objplane_pos,
                            uint32_t *px_u, uint32_t *px_v) const override {
     // explicitly connected to hole
-    if ((hole_pos - ray.org).len() > max_distance) {
+    if ((hole_pos - ray.org).len() > max_distance ||
+        dot(sensor_dir, ray.dir) > 0.) {
       return false;
     }
 
-    double sensor_t = intersect_plane(ray, sensor_center, sensor_dir);
+    Ray to_sensor_ray = Ray(hole_pos, ray.dir);
+    double sensor_t = intersect_plane(to_sensor_ray, sensor_center, sensor_dir);
     if (sensor_t < EPS) {
       return false;
     }
 
-    *px_pos = ray.org + ray.dir * sensor_t;
+    *px_pos = hole_pos + ray.dir * sensor_t;
     *lens_pos = hole_pos;
+    *objplane_pos = INVALID_VEC;
 
     Vec3 cp = *px_pos - sensor_corner;
     double u = dot(cp, sensor_u), v = dot(cp, sensor_v);

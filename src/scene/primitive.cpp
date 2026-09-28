@@ -146,7 +146,7 @@ bool Disk::hit(Ray &ray, HitRecord *record) const {
 
 Point3 Disk::sample_surface(Random *rnd, double *pdf) const {
   double theta = 2. * PI * rnd->gen();
-  double r = rnd->gen() * radius;
+  double r = sqrt(rnd->gen()) * radius;
 
   Vec3 u = fabs(normal.x) > EPS ? normalize(cross(Vec3(0, 1, 0), normal))
                                 : normalize(cross(Vec3(1, 0, 0), normal));

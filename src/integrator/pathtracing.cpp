@@ -50,8 +50,8 @@ void Integrator::pt_integrate(Scene *scene, const Ray &ray, Random *rnd) {
     }
 
     now_ray = dot(wi, orienting_normal) > 0.
-                  ? Ray(record.hitpoint + EPS * orienting_normal, wi)
-                  : Ray(record.hitpoint - EPS * orienting_normal, wi);
+                  ? Ray(record.hitpoint + EPS * orienting_geom_normal, wi)
+                  : Ray(record.hitpoint - EPS * orienting_geom_normal, wi);
     throughput = throughput *
                  prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
                                   orienting_geom_normal, into, mode) *
@@ -241,10 +241,11 @@ void Integrator::mis_integrate(Scene *scene, const Ray &ray, Random *rnd) {
                                           into, mode);
 
       test_record.reset(to_light.len() + 0.1);
-      test_ray =
-          dot(to_light_norm, orienting_normal) > 0.
-              ? Ray(record.hitpoint + EPS * orienting_normal, to_light_norm)
-              : Ray(record.hitpoint - EPS * orienting_normal, to_light_norm);
+      test_ray = dot(to_light_norm, orienting_normal) > 0.
+                     ? Ray(record.hitpoint + EPS * orienting_geom_normal,
+                           to_light_norm)
+                     : Ray(record.hitpoint - EPS * orienting_geom_normal,
+                           to_light_norm);
 
       if (pdf_bxdf > 0. && scene->intersect(test_ray, &test_record) &&
           test_record.id == light_id &&

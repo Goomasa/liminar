@@ -76,16 +76,17 @@ struct HitpointInfo {
   double pdf;
   int32_t id;
   Vec3 orienting_normal, geometry_normal, obj_normal;
+  Vec2 uv;
   ObjectType type;
 
   HitpointInfo() : id(-1) {}
 
   HitpointInfo(const Point3 &pos, const Color &thr, const double pdf,
                const int32_t id, const Vec3 &normal, const Vec3 &geom_normal,
-               const Vec3 &obj_normal, const ObjectType &type)
+               const Vec3 &obj_normal, const Vec2 &uv, const ObjectType &type)
       : hitpoint(pos), throughput(thr), pdf(pdf), id(id),
         orienting_normal(normal), geometry_normal(geom_normal),
-        obj_normal(obj_normal), type(type) {}
+        obj_normal(obj_normal), uv(uv), type(type) {}
 };
 
 std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,

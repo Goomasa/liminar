@@ -183,11 +183,11 @@ void Renderer::pt_render() const {
 
       for (uint32_t sv = 0; sv < supersamples; sv++) {
         for (uint32_t su = 0; su < supersamples; su++) {
-          Point3 pixel_pos =
-              camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
-          Ray ray = camera->get_first_ray(&rnd, pixel_pos);
-
           for (uint32_t s = 0; s < samples_per_spx; s++) {
+            Point3 pixel_pos =
+                camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
+            Ray ray = camera->get_first_ray(&rnd, pixel_pos);
+
             integrator.reset();
             integrator.mis_integrate(scene.get(), ray, &rnd);
             accumlated =
@@ -408,8 +408,9 @@ void Renderer::lt_render() const {
 void Renderer::bpt_render() const {
   uint32_t resolution_w = camera->resolution_w;
   uint32_t resolution_h = camera->resolution_h;
-  std::vector<Color> tmp_buffer(resolution_w * resolution_h * threads_num);
   uint32_t pixel_num = resolution_w * resolution_h;
+  std::vector<Color> image_buffer(pixel_num);
+  std::vector<AtomicColor> light_buffer(pixel_num);
   double total_inv =
       1. / (double)(supersamples * supersamples * samples_per_spx);
 
@@ -418,30 +419,27 @@ void Renderer::bpt_render() const {
 #pragma omp parallel for schedule(dynamic, 1)
   for (int32_t v = 0; v < resolution_h; v++) {
     Integrator integrator = Integrator();
-    uint32_t thread_id = omp_get_thread_num();
 
     for (uint32_t u = 0; u < resolution_w; u++) {
       Random rnd = Random(u * v);
 
       for (uint32_t sv = 0; sv < supersamples; sv++) {
         for (uint32_t su = 0; su < supersamples; su++) {
-          Point3 pixel_pos =
-              camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
-          Ray ray = camera->get_first_ray(&rnd, pixel_pos);
-
           for (uint32_t s = 0; s < samples_per_spx; s++) {
+            Point3 pixel_pos =
+                camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
+            Ray ray = camera->get_first_ray(&rnd, pixel_pos);
+
             std::vector<PixelResult> bpt_result = integrator.bpt_integrate(
                 scene.get(), camera.get(), pixel_pos, u, v, ray, &rnd);
             for (PixelResult &result : bpt_result) {
               uint32_t idx =
-                  pixel_num * thread_id +
-                  (pixel_num - result.px_v * resolution_w - result.px_u - 1);
+                  pixel_num - result.px_v * resolution_w - result.px_u - 1;
               if (result.from_light) {
-                tmp_buffer[idx] =
-                    tmp_buffer[idx] +
-                    result.get_value() / (double)(resolution_w * resolution_h);
+                light_buffer[idx].add(result.get_value() /
+                                      (double)(resolution_w * resolution_h));
               } else {
-                tmp_buffer[idx] = tmp_buffer[idx] + result.get_value();
+                image_buffer[idx] = image_buffer[idx] + result.get_value();
               }
             }
           }
@@ -451,12 +449,10 @@ void Renderer::bpt_render() const {
     std::cout << v << std::endl;
   }
 
-  std::vector<Color> image(resolution_w * resolution_h);
-  for (uint32_t th = 0; th < threads_num; th++) {
-    for (uint32_t i = 0; i < image.size(); i++) {
-      image[i] = image[i] + tmp_buffer[pixel_num * th + i] * total_inv;
-    }
+  for (uint32_t i = 0; i < pixel_num; i++) {
+    image_buffer[i] =
+        (image_buffer[i] + light_buffer[i].to_color()) * total_inv;
   }
 
-  save_ppm("render.ppm", image, resolution_w, resolution_h);
+  save_ppm("render.ppm", image_buffer, resolution_w, resolution_h);
 }

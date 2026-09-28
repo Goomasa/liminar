@@ -40,7 +40,7 @@ Vec3 Lambertian::sample(const Vec3 &dir_prev, const Vec3 &normal,
 double Lambertian::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
                                 const Vec3 &normal, const bool into,
                                 const IntegrateMode &mode) const {
-  return fmax(dot(dir_next, normal), EPS) * PI_INV;
+  return fmax(dot(dir_next, normal), 0.) * PI_INV;
 }
 
 Color Glass::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
@@ -352,7 +352,7 @@ double MixtureBrdf::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
   Vec3 wm = normalize(dir_next + dir_prev);
   double pdf_spec = ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
                     fabs(dot(dir_prev, normal));
-  double pdf_diff = fmax(dot(dir_next, normal), EPS) * PI_INV;
+  double pdf_diff = fmax(dot(dir_next, normal), 0.) * PI_INV;
 
   return diffuse_prob * pdf_diff + (1. - diffuse_prob) * pdf_spec;
 }

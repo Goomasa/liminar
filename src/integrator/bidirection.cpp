@@ -21,11 +21,11 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
   double pdf = camera->pdf_sample_lens_hole(), pdf_sample_omega = 1.;
   Vec3 orienting_normal = camera->sensor_dir,
        orienting_geom_normal = camera->sensor_dir,
-       prev_orienting_normal = orienting_normal;
+       prev_orienting_geom_normal = orienting_geom_normal;
 
-  vertices.emplace_back(HitpointInfo(lens_hole_pos, throughput, pdf, -1,
-                                     orienting_normal, orienting_geom_normal,
-                                     orienting_normal, camera->get_objtype()));
+  vertices.emplace_back(HitpointInfo(
+      lens_hole_pos, throughput, pdf, -1, orienting_normal,
+      orienting_geom_normal, orienting_normal, Vec2(), camera->get_objtype()));
 
   HitRecord record;
 
@@ -36,7 +36,7 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
       break;
     }
 
-    prev_orienting_normal = orienting_normal;
+    prev_orienting_geom_normal = orienting_geom_normal;
     orienting_normal = dot(record.normal, now_ray.dir) < 0.
                            ? record.normal
                            : -1. * record.normal;
@@ -55,21 +55,22 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
       pdf *= camera->pdf_sample_x1(px_pos, lens_hole_pos, objplane_pos,
                                    record.hitpoint, orienting_normal);
     } else {
-      pdf *= pdf_sample_omega * dot(wo, orienting_normal) /
+      pdf *= pdf_sample_omega * dot(wo, orienting_geom_normal) /
              (now_ray.org - record.hitpoint).len2();
     }
 
-    double g_term = fabs(dot(wo, orienting_normal) *
-                         dot(now_ray.dir, prev_orienting_normal)) /
+    double g_term = fabs(dot(wo, orienting_geom_normal) *
+                         dot(now_ray.dir, prev_orienting_geom_normal)) /
                     (now_ray.org - record.hitpoint).len2();
     throughput = throughput * g_term;
 
     Primitive *prim = &scene->primitives[record.id];
     if (prim->is_light()) {
       if (dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
-        vertices.emplace_back(HitpointInfo(
-            record.hitpoint, throughput, pdf, record.id, orienting_normal,
-            orienting_geom_normal, record.normal, ObjectType::LIGHT));
+        vertices.emplace_back(HitpointInfo(record.hitpoint, throughput, pdf,
+                                           record.id, orienting_normal,
+                                           orienting_geom_normal, record.normal,
+                                           record.uv, ObjectType::LIGHT));
         *final_value = prim->emission * (throughput / pdf);
       } else {
         *final_value = INVALID_VEC;
@@ -84,9 +85,10 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
     }
     pdf *= roullete_prob;
 
-    vertices.emplace_back(HitpointInfo(
-        record.hitpoint, throughput, pdf, record.id, orienting_normal,
-        orienting_geom_normal, record.normal, prim->bxdf->get_objtype()));
+    vertices.emplace_back(HitpointInfo(record.hitpoint, throughput, pdf,
+                                       record.id, orienting_normal,
+                                       orienting_geom_normal, record.normal,
+                                       record.uv, prim->bxdf->get_objtype()));
 
     bool into = dot(orienting_normal, record.normal) > 0.;
     Vec3 wi = prim->bxdf->sample(wo, orienting_normal, into, rnd, mode);
@@ -96,8 +98,8 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
     }
 
     now_ray = dot(wi, orienting_normal) > 0.
-                  ? Ray(record.hitpoint + EPS * orienting_normal, wi)
-                  : Ray(record.hitpoint - EPS * orienting_normal, wi);
+                  ? Ray(record.hitpoint + EPS * orienting_geom_normal, wi)
+                  : Ray(record.hitpoint - EPS * orienting_geom_normal, wi);
     throughput =
         throughput * prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
                                       orienting_geom_normal, into, mode);
@@ -124,19 +126,20 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
   Point3 light_pos =
       scene->primitives[light_id].shape->sample_surface(rnd, &pdf);
   Vec3 light_normal = scene->primitives[light_id].shape->get_normal(light_pos);
+  Vec2 light_uv = scene->primitives[light_id].shape->get_texcoord(light_pos);
   pdf *= scene->pdf_sample_light_uniform();
   Color throughput = scene->primitives[light_id].emission;
 
   vertices.emplace_back(HitpointInfo(light_pos, throughput, pdf, light_id,
                                      light_normal, light_normal, light_normal,
-                                     ObjectType::LIGHT));
+                                     light_uv, ObjectType::LIGHT));
 
   Vec3 dir = Bxdf::sample_cosine_hemisphere(light_normal, rnd);
   double pdf_sample_omega = fabs(dot(light_normal, dir)) * PI_INV;
   Ray now_ray = Ray(light_pos + EPS * light_normal, dir);
 
   Vec3 orienting_normal = light_normal, orienting_geom_normal = light_normal,
-       prev_orienting_normal = light_normal;
+       prev_orienting_geom_normal = light_normal;
   HitRecord record;
 
   for (uint32_t depth = 0;; depth++) {
@@ -144,7 +147,7 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
     bool scene_hit = scene->intersect(now_ray, &record);
 
     Vec3 wi = -1. * now_ray.dir;
-    prev_orienting_normal = orienting_normal;
+    prev_orienting_geom_normal = orienting_geom_normal;
 
     Point3 px_pos, lens_pos, objplane_pos;
     uint32_t px_u, px_v;
@@ -152,16 +155,16 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
         camera->intersect_lens_hole(now_ray, record.distance, &px_pos,
                                     &lens_pos, &objplane_pos, &px_u, &px_v)) {
       double g_term = fabs(dot(wi, camera->sensor_dir) *
-                           dot(now_ray.dir, prev_orienting_normal)) /
+                           dot(now_ray.dir, prev_orienting_geom_normal)) /
                       (lens_pos - now_ray.org).len2();
       throughput = throughput * g_term *
                    camera->get_bpt_coefficient(px_pos, lens_pos, objplane_pos);
       pdf *= pdf_sample_omega * dot(wi, camera->sensor_dir) /
              (lens_pos - now_ray.org).len2();
 
-      vertices.emplace_back(HitpointInfo(lens_pos, throughput, pdf, -1,
-                                         camera->sensor_dir, camera->sensor_dir,
-                                         camera->sensor_dir, ObjectType::LENS));
+      vertices.emplace_back(HitpointInfo(
+          lens_pos, throughput, pdf, -1, camera->sensor_dir, camera->sensor_dir,
+          camera->sensor_dir, Vec2(), ObjectType::LENS));
       *result = PixelResult(px_u, px_v, throughput / pdf, true);
       break;
     }
@@ -178,11 +181,11 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
                                 ? record.geometry_normal
                                 : -1. * record.geometry_normal;
 
-    pdf *= pdf_sample_omega * dot(wi, orienting_normal) /
+    pdf *= pdf_sample_omega * dot(wi, orienting_geom_normal) /
            (now_ray.org - record.hitpoint).len2();
 
-    double g_term = fabs(dot(wi, orienting_normal) *
-                         dot(now_ray.dir, prev_orienting_normal)) /
+    double g_term = fabs(dot(wi, orienting_geom_normal) *
+                         dot(now_ray.dir, prev_orienting_geom_normal)) /
                     (now_ray.org - record.hitpoint).len2();
     throughput = throughput * g_term;
 
@@ -195,9 +198,10 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
 
     Primitive *prim = &scene->primitives[record.id];
 
-    vertices.emplace_back(HitpointInfo(
-        record.hitpoint, throughput, pdf, record.id, orienting_normal,
-        orienting_geom_normal, record.normal, prim->bxdf->get_objtype()));
+    vertices.emplace_back(HitpointInfo(record.hitpoint, throughput, pdf,
+                                       record.id, orienting_normal,
+                                       orienting_geom_normal, record.normal,
+                                       record.uv, prim->bxdf->get_objtype()));
 
     if (prim->is_light()) {
       result->value = INVALID_VEC;
@@ -212,11 +216,13 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
     }
 
     now_ray = dot(wo, orienting_normal) > 0.
-                  ? Ray(record.hitpoint + EPS * orienting_normal, wo)
-                  : Ray(record.hitpoint - EPS * orienting_normal, wo);
+                  ? Ray(record.hitpoint + EPS * orienting_geom_normal, wo)
+                  : Ray(record.hitpoint - EPS * orienting_geom_normal, wo);
     throughput =
-        throughput * prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
-                                      orienting_geom_normal, into, mode);
+        throughput *
+        prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
+                         orienting_geom_normal, into, mode) *
+        fabs(dot(wi, orienting_normal) / dot(wi, orienting_geom_normal));
     pdf_sample_omega =
         prim->bxdf->sampling_pdf(wi, wo, orienting_normal, into, mode);
   }
@@ -271,12 +277,11 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
     Ray test_ray = Ray(to_v->hitpoint, -1. * normalized_to);
     if (!camera->intersect_lens_hole(test_ray, INF, &px_pos, &lens_pos,
                                      &objplane_pos, &tmp_u, &tmp_v)) {
-      pdf_omega = 0.;
-      break;
+      return 0.;
     }
 
-    pdf_omega = camera->pdf_sample_x1(px_pos, lens_pos, objplane_pos,
-                                      to_v->hitpoint, to_v->orienting_normal);
+    return camera->pdf_sample_x1(px_pos, lens_pos, objplane_pos, to_v->hitpoint,
+                                 to_v->orienting_normal);
   } break;
   case ObjectType::PINHOLE: {
     Point3 px_pos, hole_pos, objplane_pos;
@@ -284,16 +289,15 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
     Ray test_ray = Ray(to_v->hitpoint, -1. * normalized_to);
     if (!camera->intersect_lens_hole(test_ray, INF, &px_pos, &hole_pos,
                                      &objplane_pos, &tmp_u, &tmp_v)) {
-      pdf_omega = 0.;
-      break;
+      return 0.;
     }
 
-    pdf_omega = camera->pdf_sample_x1(px_pos, hole_pos, objplane_pos,
-                                      to_v->hitpoint, to_v->orienting_normal);
+    return camera->pdf_sample_x1(px_pos, hole_pos, objplane_pos, to_v->hitpoint,
+                                 to_v->orienting_normal);
   } break;
   }
 
-  return pdf_omega * fabs(dot(normalized_to, to_v->orienting_normal)) /
+  return pdf_omega * fabs(dot(normalized_to, to_v->geometry_normal)) /
          to.len2();
 }
 
@@ -320,7 +324,8 @@ double calc_mis_weight(Scene *scene, Camera *camera,
       calc_sampling_pdf(path, camera, scene, 0, 1, 2, IntegrateMode::PT);
 
   pi1_pi[size - 1] = calc_sampling_pdf(path, camera, scene, size - 1, size - 2,
-                                       size - 3, IntegrateMode::LT);
+                                       size - 3, IntegrateMode::LT) /
+                     camera->pdf_sample_lens_hole();
 
   for (uint32_t i = 1; i < size - 1; i++) {
     pi1_pi[i] = calc_sampling_pdf(path, camera, scene, i, i - 1, i - 2,
@@ -389,7 +394,6 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
                              mis_weight * lightpath_result.get_value(), true);
   }
 
-  HitRecord test_record;
   Ray test_ray;
 
   for (uint32_t en = 1; en <= eye_path.size(); en++) {
@@ -412,13 +416,13 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
 
       Color throughput = eye_end->throughput * light_end->throughput;
       Vec3 light_end_to_eye_end = eye_end->hitpoint - light_end->hitpoint;
-      test_record.reset(light_end_to_eye_end.len() + 0.1);
+      HitRecord test_record(light_end_to_eye_end.len() + 0.1);
       Vec3 test_dir = normalize(light_end_to_eye_end);
       Vec3 test_org =
           light_end->type == ObjectType::OTHER_TRANSPARENT &&
                   dot(light_end_to_eye_end, light_end->orienting_normal) < 0.
-              ? light_end->hitpoint - EPS * light_end->orienting_normal
-              : light_end->hitpoint + EPS * light_end->orienting_normal;
+              ? light_end->hitpoint - EPS * light_end->geometry_normal
+              : light_end->hitpoint + EPS * light_end->geometry_normal;
       test_ray = Ray(test_org, test_dir);
       scene->intersect(test_ray, &test_record);
 
@@ -430,12 +434,13 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         Vec3 wo = normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
         throughput =
             throughput * scene->primitives[eye_end->id].bxdf->eval(
-                             wo, -1. * test_dir, test_record.uv,
+                             wo, -1. * test_dir, eye_end->uv,
                              eye_end->orienting_normal,
-                             eye_end->geometry_normal, true, IntegrateMode::LT);
+                             eye_end->geometry_normal, true, IntegrateMode::PT);
       } break;
       case ObjectType::OTHER_TRANSPARENT: {
-        if ((eye_end->hitpoint - test_record.hitpoint).len() > EPS) {
+        if ((eye_end->hitpoint - test_record.hitpoint).len() > EPS ||
+            test_record.id != eye_end->id) {
           continue;
         }
         Vec3 wo = normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
@@ -447,10 +452,10 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
                 ? eye_end->geometry_normal
                 : -1. * eye_end->geometry_normal;
         bool into = dot(orienting_normal, eye_end->obj_normal) > 0.;
-        throughput = throughput * scene->primitives[eye_end->id].bxdf->eval(
-                                      wo, -1. * test_dir, test_record.uv,
-                                      orienting_normal, orienting_geom_normal,
-                                      into, IntegrateMode::LT);
+        throughput =
+            throughput * scene->primitives[eye_end->id].bxdf->eval(
+                             wo, -1. * test_dir, eye_end->uv, orienting_normal,
+                             orienting_geom_normal, into, IntegrateMode::PT);
       } break;
       case ObjectType::PINHOLE:
       case ObjectType::LENS: {
@@ -471,17 +476,14 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
       switch (light_end->type) {
       case ObjectType::OTHER: {
         Vec3 wi = normalize(light_path[ln - 2].hitpoint - light_end->hitpoint);
-        Vec2 uv = scene->primitives[light_end->id].shape->get_texcoord(
-            light_end->hitpoint);
-        throughput = throughput *
-                     scene->primitives[light_end->id].bxdf->eval(
-                         test_dir, wi, uv, light_end->orienting_normal,
-                         light_end->geometry_normal, true, IntegrateMode::LT);
+        throughput = throughput * scene->primitives[light_end->id].bxdf->eval(
+                                      test_dir, wi, light_end->uv,
+                                      light_end->orienting_normal,
+                                      light_end->geometry_normal, true,
+                                      IntegrateMode::LT);
       } break;
       case ObjectType::OTHER_TRANSPARENT: {
         Vec3 wi = normalize(light_path[ln - 2].hitpoint - light_end->hitpoint);
-        Vec2 uv = scene->primitives[light_end->id].shape->get_texcoord(
-            light_end->hitpoint);
         Vec3 orienting_normal = dot(test_dir, light_end->obj_normal) < 0.
                                     ? light_end->obj_normal
                                     : -1. * light_end->obj_normal;
@@ -492,7 +494,7 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         bool into = dot(orienting_normal, light_end->obj_normal) > 0.;
         throughput =
             throughput * scene->primitives[light_end->id].bxdf->eval(
-                             test_dir, wi, uv, orienting_normal,
+                             test_dir, wi, light_end->uv, orienting_normal,
                              orienting_geom_normal, into, IntegrateMode::LT);
       } break;
       case ObjectType::LIGHT:
@@ -505,12 +507,12 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         continue;
       }
 
-      double g_term = fabs(dot(test_dir, eye_end->orienting_normal) *
-                           dot(test_dir, light_end->orienting_normal)) /
+      double g_term = fabs(dot(test_dir, eye_end->geometry_normal) *
+                           dot(test_dir, light_end->geometry_normal)) /
                       light_end_to_eye_end.len2();
       double mis_weight =
           calc_mis_weight(scene, camera, eye_path, light_path, pdf, en, ln);
-      if (std::isnan(mis_weight)) {
+      if (std::isnan(mis_weight) || mis_weight > INF || mis_weight < 0) {
         continue;
       }
 
