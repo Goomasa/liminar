@@ -8,7 +8,14 @@
 
 enum class IntegrateMode { PT, LT, BPT, TEST };
 
-enum class ObjectType { LIGHT, LENS, FULL_SPECUALR, OTHER, OTHER_TRANSPARENT };
+enum class ObjectType {
+  LIGHT,
+  LENS,
+  PINHOLE,
+  FULL_SPECUALR,
+  OTHER,
+  OTHER_TRANSPARENT
+};
 
 class Bxdf {
 public:

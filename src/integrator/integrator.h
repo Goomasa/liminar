@@ -64,7 +64,7 @@ inline double roullete(const uint32_t depth) {
   if (depth < DEPTH) {
     return 1.0;
   } else if (depth > MAX_DEPTH) {
-    return 0.8 * pow(0.5, depth - MAX_DEPTH);
+    return 0.;
   } else {
     return 0.8;
   }

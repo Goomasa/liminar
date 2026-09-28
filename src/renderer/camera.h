@@ -40,6 +40,8 @@ public:
   virtual Point3 get_objplane_position(const Point3 &lens_pos,
                                        const Point3 &x1) const = 0;
 
+  virtual ObjectType get_objtype() const = 0;
+
 protected:
   inline double intersect_plane(Ray &ray, const Point3 &pos_on_plane,
                                 const Vec3 &normal) const {
@@ -120,23 +122,18 @@ public:
   bool intersect_lens_hole(Ray &ray, const double max_distance, Point3 *px_pos,
                            Point3 *lens_pos, Point3 *objplane_pos,
                            uint32_t *px_u, uint32_t *px_v) const override {
-    double hole_t = intersect_plane(ray, hole_pos, sensor_dir);
-    if (hole_t < EPS || hole_t > max_distance) {
-      return false;
-    }
-
-    Point3 hit_hole_pos = ray.org + ray.dir * hole_t;
-    if ((hit_hole_pos - hole_pos).len() > EPS ||
-        dot(ray.dir, sensor_dir) > 0.) {
+    // explicitly connected to hole
+    if ((hole_pos - ray.org).len() > max_distance) {
       return false;
     }
 
     double sensor_t = intersect_plane(ray, sensor_center, sensor_dir);
-    if (sensor_t < EPS || sensor_t > max_distance) {
+    if (sensor_t < EPS) {
       return false;
     }
 
     *px_pos = ray.org + ray.dir * sensor_t;
+    *lens_pos = hole_pos;
 
     Vec3 cp = *px_pos - sensor_corner;
     double u = dot(cp, sensor_u), v = dot(cp, sensor_v);
@@ -154,6 +151,8 @@ public:
                                const Point3 &x1) const override {
     return INVALID_VEC;
   }
+
+  ObjectType get_objtype() const override { return ObjectType::PINHOLE; }
 
 private:
   Point3 sensor_center, sensor_corner;
@@ -291,6 +290,8 @@ public:
         intersect_plane(to_objplane, objplane_center, sensor_dir);
     return lens_pos + to_objplane.dir * objplane_t;
   }
+
+  ObjectType get_objtype() const override { return ObjectType::LENS; }
 
 private:
   Point3 sensor_center, sensor_corner;
