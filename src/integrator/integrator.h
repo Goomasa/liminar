@@ -24,7 +24,7 @@ struct PixelResult {
       : px_u(px_u), px_v(px_v), value(value), from_light(from_light) {}
 
   inline Color get_value() const {
-    if (is_valid(value)) {
+    if (is_valid(value) && value != INVALID_VEC) {
       return value;
     } else {
       return Color();
@@ -77,6 +77,8 @@ struct HitpointInfo {
   int32_t id;
   Vec3 orienting_normal, geometry_normal, obj_normal;
   ObjectType type;
+
+  HitpointInfo() : id(-1) {}
 
   HitpointInfo(const Point3 &pos, const Color &thr, const double pdf,
                const int32_t id, const Vec3 &normal, const Vec3 &geom_normal,

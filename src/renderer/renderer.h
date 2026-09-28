@@ -2,6 +2,7 @@
 
 #include "camera.h"
 #include "config/parser.h"
+#include "renderer/material.h"
 #include "scene/scene.h"
 #include <chrono>
 #include <iostream>
@@ -12,7 +13,7 @@ public:
   std::unique_ptr<Scene> scene;
   std::unique_ptr<Camera> camera;
   uint32_t supersamples, samples_per_spx, threads_num;
-  bool is_test = false;
+  IntegrateMode mode = IntegrateMode::PT;
 
   Renderer(const std::string &filename = "settings/test-setting.json") {
     ObjectNode node = load_json(filename);
@@ -20,15 +21,24 @@ public:
     set_scene(node);
     set_renderer(node);
 
-    scene->setup(is_test);
+    scene->setup(mode == IntegrateMode::TEST);
 
     std::chrono::system_clock::time_point start, end;
     start = std::chrono::system_clock::now();
 
-    if (is_test) {
+    switch (mode) {
+    case IntegrateMode::TEST: {
       test_render();
-    } else {
-      render();
+    } break;
+    case IntegrateMode::BPT: {
+      bpt_render();
+    } break;
+    case IntegrateMode::LT: {
+      lt_render();
+    } break;
+    default: {
+      pt_render();
+    } break;
     }
 
     end = std::chrono::system_clock::now();
@@ -39,7 +49,11 @@ public:
   }
 
 private:
-  void render() const;
+  void pt_render() const;
+
+  void lt_render() const;
+
+  void bpt_render() const;
 
   void test_render() const;
 

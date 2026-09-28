@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-enum class IntegrateMode { PT, LT };
+enum class IntegrateMode { PT, LT, BPT, TEST };
 
 enum class ObjectType { LIGHT, LENS, FULL_SPECUALR, OTHER, OTHER_TRANSPARENT };
 

@@ -1,6 +1,8 @@
 #include "integrator.h"
+#include "renderer/camera.h"
 #include "renderer/material.h"
 #include "renderer/ray.h"
+#include "scene/scene.h"
 #include "util/utils.h"
 #include <cmath>
 #include <cstdint>
@@ -16,7 +18,7 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
   Point3 lens_pos = now_ray.org; // lens or pinhole position
 
   Color throughput(1.);
-  double pdf = camera->pdf_sample_lens_hole(), pdf_sample_omega;
+  double pdf = camera->pdf_sample_lens_hole(), pdf_sample_omega = 1.;
   Vec3 orienting_normal = camera->sensor_dir,
        orienting_geom_normal = camera->sensor_dir,
        prev_orienting_normal = orienting_normal;
@@ -115,7 +117,7 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
     return vertices;
   }
 
-  double pdf, pdf_sample_omega;
+  double pdf = 1.;
   Point3 light_pos =
       scene->primitives[light_id].shape->sample_surface(rnd, &pdf);
   Vec3 light_normal = scene->primitives[light_id].shape->get_normal(light_pos);
@@ -127,7 +129,7 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
                                      ObjectType::LIGHT));
 
   Vec3 dir = Bxdf::sample_cosine_hemisphere(light_normal, rnd);
-  pdf *= fabs(dot(light_normal, dir)) * PI_INV;
+  double pdf_sample_omega = fabs(dot(light_normal, dir)) * PI_INV;
   Ray now_ray = Ray(light_pos + EPS * light_normal, dir);
 
   Vec3 orienting_normal = light_normal, orienting_geom_normal = light_normal,
@@ -219,7 +221,122 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
   return vertices;
 }
 
-double calc_mis_weight() { return 1.; }
+double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
+                         Camera *camera, Scene *scene, const uint32_t to_idx,
+                         const uint32_t from_idx, const uint32_t prev_from_idx,
+                         const IntegrateMode &mode) {
+  const HitpointInfo *to_v = path[to_idx], *from_v = path[from_idx];
+  const HitpointInfo *prev_from_v =
+      prev_from_idx < path.size() ? path[prev_from_idx] : nullptr;
+  double pdf_omega = 1.;
+
+  Vec3 to = to_v->hitpoint - from_v->hitpoint;
+  Vec3 normalized_to = normalize(to);
+
+  switch (from_v->type) {
+  case ObjectType::LIGHT: {
+    pdf_omega = dot(from_v->orienting_normal, normalized_to);
+  } break;
+  case ObjectType::OTHER: {
+    if (!prev_from_idx) {
+      break;
+    }
+
+    Vec3 dir_prev = normalize(prev_from_v->hitpoint - from_v->hitpoint);
+    Vec3 dir_next = normalized_to;
+    pdf_omega = scene->primitives[from_v->id].bxdf->sampling_pdf(
+        dir_prev, dir_next, from_v->orienting_normal, true, mode);
+  } break;
+  case ObjectType::FULL_SPECUALR:
+  case ObjectType::OTHER_TRANSPARENT: {
+    if (!prev_from_idx) {
+      break;
+    }
+
+    Vec3 dir_prev = normalize(prev_from_v->hitpoint - from_v->hitpoint);
+    Vec3 dir_next = normalized_to;
+    Vec3 orienting_normal = dot(dir_prev, from_v->obj_normal) > 0.
+                                ? from_v->obj_normal
+                                : -1. * from_v->obj_normal;
+    bool into = dot(from_v->obj_normal, orienting_normal) > 0.;
+    pdf_omega = scene->primitives[from_v->id].bxdf->sampling_pdf(
+        dir_prev, dir_next, orienting_normal, into, mode);
+  } break;
+  case ObjectType::LENS: {
+    Point3 px_pos, lens_pos, objplane_pos;
+    uint32_t tmp_u, tmp_v;
+    Ray test_ray = Ray(to_v->hitpoint, -1. * normalized_to);
+    if (!camera->intersect_lens(test_ray, INF, &px_pos, &lens_pos,
+                                &objplane_pos, &tmp_u, &tmp_v)) {
+      pdf_omega = 0.;
+      break;
+    }
+
+    pdf_omega = camera->pdf_sample_x1(px_pos, lens_pos, objplane_pos,
+                                      to_v->hitpoint, to_v->orienting_normal);
+  } break;
+  }
+
+  return pdf_omega * fabs(dot(normalized_to, to_v->orienting_normal)) /
+         to.len2();
+}
+
+double calc_mis_weight(Scene *scene, Camera *camera,
+                       const std::vector<HitpointInfo> &eye_path,
+                       const std::vector<HitpointInfo> &light_path,
+                       const double total_pdf, const uint32_t en,
+                       const uint32_t ln) {
+  uint32_t size = eye_path.size() + light_path.size();
+  std::vector<const HitpointInfo *> path(size);
+  std::vector<double> pi1_pi(size);
+
+  for (uint32_t i = 0; i < light_path.size(); i++) {
+    path[i] = &light_path[i];
+  }
+
+  for (uint32_t i = 0; i < eye_path.size(); i++) {
+    path[light_path.size() + i] = &eye_path[eye_path.size() - i - 1];
+  }
+
+  pi1_pi[0] =
+      scene->pdf_sample_light_uniform() *
+      scene->primitives[light_path[0].id].shape->pdf_sample_surface_area() /
+      calc_sampling_pdf(path, camera, scene, 0, 1, 2, IntegrateMode::PT);
+
+  pi1_pi[size - 1] = calc_sampling_pdf(path, camera, scene, size - 1, size - 2,
+                                       size - 3, IntegrateMode::LT) /
+                     camera->pdf_sample_lens_hole();
+
+  for (uint32_t i = 1; i < size - 1; i++) {
+    pi1_pi[i] = calc_sampling_pdf(path, camera, scene, i, i - 1, i - 2,
+                                  IntegrateMode::LT) /
+                calc_sampling_pdf(path, camera, scene, i, i + 1, i + 2,
+                                  IntegrateMode::PT);
+  }
+
+  std::vector<double> p(size + 1);
+  p[ln] = total_pdf;
+  for (int32_t i = ln - 1; i >= 0; i--) {
+    p[i] = p[i + 1] / pi1_pi[i];
+  }
+
+  for (uint32_t i = ln; i < size; i++) {
+    p[i + 1] = p[i] * pi1_pi[i];
+  }
+
+  for (uint32_t i = 0; i < size; i++) {
+    if (path[i]->type == ObjectType::FULL_SPECUALR) {
+      p[i] = 0., p[i + 1] = 0.;
+    }
+  }
+
+  double sum = 0.;
+  for (double p_ : p) {
+    sum += p_;
+  }
+
+  return total_pdf / sum;
+}
 
 std::vector<PixelResult>
 Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
@@ -238,13 +355,17 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
       gen_light_path(scene, camera, &lightpath_result, rnd);
 
   if (eyepath_result.value != INVALID_VEC) {
-    double mis_weight = calc_mis_weight();
+    double total_pdf = eye_path[eye_path.size() - 1].pdf;
+    double mis_weight = calc_mis_weight(scene, camera, eye_path, light_path,
+                                        total_pdf, eye_path.size(), 0);
     bpt_results.emplace_back(PixelResult(
         px_u, px_v, mis_weight * eyepath_result.get_value(), false));
   }
 
   if (lightpath_result.value != INVALID_VEC) {
-    double mis_weight = calc_mis_weight();
+    double total_pdf = light_path[light_path.size() - 1].pdf;
+    double mis_weight = calc_mis_weight(scene, camera, eye_path, light_path,
+                                        total_pdf, 0, light_path.size());
     bpt_results.emplace_back(lightpath_result.px_u, lightpath_result.px_v,
                              mis_weight * lightpath_result.get_value(), true);
   }
@@ -359,7 +480,8 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
           fabs(dot(light_end_to_eye_end, eye_end->orienting_normal) *
                dot(light_end_to_eye_end, light_end->orienting_normal)) /
           light_end_to_eye_end.len2();
-      double mis_weight = calc_mis_weight();
+      double mis_weight =
+          calc_mis_weight(scene, camera, eye_path, light_path, pdf, en, ln);
       if (std::isnan(mis_weight)) {
         continue;
       }
