@@ -15,7 +15,7 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
   const IntegrateMode mode = IntegrateMode::PT;
 
   Ray now_ray = ray;
-  Point3 lens_pos = now_ray.org; // lens or pinhole position
+  Point3 lens_hole_pos = now_ray.org; // lens or pinhole position
 
   Color throughput(1.);
   double pdf = camera->pdf_sample_lens_hole(), pdf_sample_omega = 1.;
@@ -23,7 +23,7 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
        orienting_geom_normal = camera->sensor_dir,
        prev_orienting_normal = orienting_normal;
 
-  vertices.emplace_back(HitpointInfo(lens_pos, throughput, pdf, -1,
+  vertices.emplace_back(HitpointInfo(lens_hole_pos, throughput, pdf, -1,
                                      orienting_normal, orienting_geom_normal,
                                      orienting_normal, ObjectType::LENS));
 
@@ -49,10 +49,10 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
     if (depth == 0) {
       // lens -> x1
       Point3 objplane_pos =
-          camera->get_objplane_position(lens_pos, record.hitpoint);
-      throughput = throughput *
-                   camera->get_bpt_coefficient(px_pos, lens_pos, objplane_pos);
-      pdf *= camera->pdf_sample_x1(px_pos, lens_pos, objplane_pos,
+          camera->get_objplane_position(lens_hole_pos, record.hitpoint);
+      throughput = throughput * camera->get_bpt_coefficient(
+                                    px_pos, lens_hole_pos, objplane_pos);
+      pdf *= camera->pdf_sample_x1(px_pos, lens_hole_pos, objplane_pos,
                                    record.hitpoint, orienting_normal);
     } else {
       pdf *= pdf_sample_omega * dot(wo, orienting_normal) /
@@ -65,12 +65,15 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
     throughput = throughput * g_term;
 
     Primitive *prim = &scene->primitives[record.id];
-    if (prim->is_light() &&
-        dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
-      vertices.emplace_back(HitpointInfo(
-          record.hitpoint, throughput, pdf, record.id, orienting_normal,
-          orienting_geom_normal, record.normal, ObjectType::LIGHT));
-      *final_value = prim->emission * (throughput / pdf);
+    if (prim->is_light()) {
+      if (dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
+        vertices.emplace_back(HitpointInfo(
+            record.hitpoint, throughput, pdf, record.id, orienting_normal,
+            orienting_geom_normal, record.normal, ObjectType::LIGHT));
+        *final_value = prim->emission * (throughput / pdf);
+      } else {
+        *final_value = INVALID_VEC;
+      }
       break;
     }
 
@@ -145,8 +148,8 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
 
     Point3 px_pos, lens_pos, objplane_pos;
     uint32_t px_u, px_v;
-    if (camera->intersect_lens(now_ray, record.distance, &px_pos, &lens_pos,
-                               &objplane_pos, &px_u, &px_v)) {
+    if (camera->intersect_lens_hole(now_ray, record.distance, &px_pos,
+                                    &lens_pos, &objplane_pos, &px_u, &px_v)) {
       double g_term = fabs(dot(wi, camera->sensor_dir) *
                            dot(now_ray.dir, prev_orienting_normal)) /
                       (lens_pos - now_ray.org).len2();
@@ -195,8 +198,7 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
         record.hitpoint, throughput, pdf, record.id, orienting_normal,
         orienting_geom_normal, record.normal, prim->bxdf->get_objtype()));
 
-    if (prim->is_light() &&
-        dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
+    if (prim->is_light()) {
       result->value = INVALID_VEC;
       break;
     }
@@ -235,7 +237,7 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
 
   switch (from_v->type) {
   case ObjectType::LIGHT: {
-    pdf_omega = dot(from_v->orienting_normal, normalized_to) * PI_INV;
+    pdf_omega = fabs(dot(from_v->orienting_normal, normalized_to)) * PI_INV;
   } break;
   case ObjectType::OTHER: {
     if (!prev_from_v) {
@@ -266,8 +268,8 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
     Point3 px_pos, lens_pos, objplane_pos;
     uint32_t tmp_u, tmp_v;
     Ray test_ray = Ray(to_v->hitpoint, -1. * normalized_to);
-    if (!camera->intersect_lens(test_ray, INF, &px_pos, &lens_pos,
-                                &objplane_pos, &tmp_u, &tmp_v)) {
+    if (!camera->intersect_lens_hole(test_ray, INF, &px_pos, &lens_pos,
+                                     &objplane_pos, &tmp_u, &tmp_v)) {
       pdf_omega = 0.;
       break;
     }
@@ -300,12 +302,13 @@ double calc_mis_weight(Scene *scene, Camera *camera,
 
   pi1_pi[0] =
       scene->pdf_sample_light_uniform() *
-      scene->primitives[light_path[0].id].shape->pdf_sample_surface_area() /
-      calc_sampling_pdf(path, camera, scene, 0, 1, 2, IntegrateMode::PT);
+      scene->primitives[path[0]->id].shape->pdf_sample_surface_area() /
+      calc_sampling_pdf(path, camera, scene, 0, 1, 2, IntegrateMode::PT) *
+      roullete(size - 1);
 
   pi1_pi[size - 1] = calc_sampling_pdf(path, camera, scene, size - 1, size - 2,
-                                       size - 3, IntegrateMode::LT) /
-                     camera->pdf_sample_lens_hole();
+                                       size - 3, IntegrateMode::LT) *
+                     roullete(size - 1) / camera->pdf_sample_lens_hole();
 
   for (uint32_t i = 1; i < size - 1; i++) {
     pi1_pi[i] = calc_sampling_pdf(path, camera, scene, i, i - 1, i - 2,
@@ -432,9 +435,9 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
       } break;
       case ObjectType::LENS: {
         Point3 px_pos, lens_pos, objplane_pos;
-        if (camera->intersect_lens(test_ray, test_record.distance, &px_pos,
-                                   &lens_pos, &objplane_pos, &final_px_u,
-                                   &final_px_v)) {
+        if (camera->intersect_lens_hole(test_ray, test_record.distance, &px_pos,
+                                        &lens_pos, &objplane_pos, &final_px_u,
+                                        &final_px_v)) {
           throughput = throughput * camera->get_bpt_coefficient(
                                         px_pos, lens_pos, objplane_pos);
         } else {

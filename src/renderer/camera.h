@@ -1,5 +1,6 @@
 #pragma once
 
+#include "renderer/material.h"
 #include "renderer/ray.h"
 #include "util/random.h"
 #include "util/utils.h"
@@ -32,12 +33,23 @@ public:
                                const Vec3 &normal) const = 0;
 
   virtual double pdf_sample_lens_hole() const = 0;
-  virtual bool intersect_lens(Ray &ray, const double max_distance,
-                              Point3 *px_pos, Point3 *lens_pos,
-                              Point3 *objplane_pos, uint32_t *px_u,
-                              uint32_t *px_v) const = 0;
+  virtual bool intersect_lens_hole(Ray &ray, const double max_distance,
+                                   Point3 *px_pos, Point3 *lens_pos,
+                                   Point3 *objplane_pos, uint32_t *px_u,
+                                   uint32_t *px_v) const = 0;
   virtual Point3 get_objplane_position(const Point3 &lens_pos,
                                        const Point3 &x1) const = 0;
+
+protected:
+  inline double intersect_plane(Ray &ray, const Point3 &pos_on_plane,
+                                const Vec3 &normal) const {
+    double dn = dot(ray.dir, normal);
+    if (fabs(dn) < EPS) {
+      return 0.;
+    }
+
+    return dot(normal, pos_on_plane - ray.org) / dn;
+  }
 };
 
 class PinholeModel : public Camera {
@@ -105,10 +117,37 @@ public:
 
   double pdf_sample_lens_hole() const override { return 1.; }
 
-  bool intersect_lens(Ray &ray, const double max_distance, Point3 *px_pos,
-                      Point3 *lens_pos, Point3 *objplane_pos, uint32_t *px_u,
-                      uint32_t *px_v) const override {
-    return false;
+  bool intersect_lens_hole(Ray &ray, const double max_distance, Point3 *px_pos,
+                           Point3 *lens_pos, Point3 *objplane_pos,
+                           uint32_t *px_u, uint32_t *px_v) const override {
+    double hole_t = intersect_plane(ray, hole_pos, sensor_dir);
+    if (hole_t < EPS || hole_t > max_distance) {
+      return false;
+    }
+
+    Point3 hit_hole_pos = ray.org + ray.dir * hole_t;
+    if ((hit_hole_pos - hole_pos).len() > EPS ||
+        dot(ray.dir, sensor_dir) > 0.) {
+      return false;
+    }
+
+    double sensor_t = intersect_plane(ray, sensor_center, sensor_dir);
+    if (sensor_t < EPS || sensor_t > max_distance) {
+      return false;
+    }
+
+    *px_pos = ray.org + ray.dir * sensor_t;
+
+    Vec3 cp = *px_pos - sensor_corner;
+    double u = dot(cp, sensor_u), v = dot(cp, sensor_v);
+    if (u < 0. || v < 0. || u >= sensor_width || v >= sensor_height) {
+      return false;
+    }
+
+    *px_u = static_cast<uint32_t>(u / pixel_width);
+    *px_v = static_cast<uint32_t>(v / pixel_height);
+
+    return true;
   }
 
   Point3 get_objplane_position(const Point3 &lens_pos,
@@ -208,9 +247,9 @@ public:
     return 1. / (PI * lens_radius * lens_radius);
   }
 
-  bool intersect_lens(Ray &ray, const double max_distance, Point3 *px_pos,
-                      Point3 *lens_pos, Point3 *objplane_pos, uint32_t *px_u,
-                      uint32_t *px_v) const override {
+  bool intersect_lens_hole(Ray &ray, const double max_distance, Point3 *px_pos,
+                           Point3 *lens_pos, Point3 *objplane_pos,
+                           uint32_t *px_u, uint32_t *px_v) const override {
     double lens_t = intersect_plane(ray, lens_center, sensor_dir);
     if (lens_t < EPS || lens_t > max_distance) {
       return false;
@@ -271,15 +310,5 @@ private:
     double theta = 2. * PI * rnd->gen();
     double r = sqrt(rnd->gen()) * lens_radius;
     return lens_center + sensor_u * r * cos(theta) + sensor_v * r * sin(theta);
-  }
-
-  inline double intersect_plane(Ray &ray, const Point3 &pos_on_plane,
-                                const Vec3 &normal) const {
-    double dn = dot(ray.dir, normal);
-    if (fabs(dn) < EPS) {
-      return 0.;
-    }
-
-    return dot(normal, pos_on_plane - ray.org) / dn;
   }
 };
