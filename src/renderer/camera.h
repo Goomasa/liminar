@@ -234,7 +234,7 @@ public:
               (lens_center - *objplane_pos) * (sensor_to_lens / focal_distance);
     Vec3 cp = *px_pos - sensor_corner;
     double u = dot(cp, sensor_u), v = dot(cp, sensor_v);
-    if (u < 0. || v < 0. || u > sensor_width || v > sensor_height) {
+    if (u < 0. || v < 0. || u >= sensor_width || v >= sensor_height) {
       return false;
     }
 

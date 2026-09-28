@@ -59,8 +59,8 @@ std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
              (now_ray.org - record.hitpoint).len2();
     }
 
-    double g_term = dot(wo, orienting_normal) *
-                    dot(now_ray.dir, prev_orienting_normal) /
+    double g_term = fabs(dot(wo, orienting_normal) *
+                         dot(now_ray.dir, prev_orienting_normal)) /
                     (now_ray.org - record.hitpoint).len2();
     throughput = throughput * g_term;
 
@@ -147,8 +147,8 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
     uint32_t px_u, px_v;
     if (camera->intersect_lens(now_ray, record.distance, &px_pos, &lens_pos,
                                &objplane_pos, &px_u, &px_v)) {
-      double g_term = dot(wi, camera->sensor_dir) *
-                      dot(now_ray.dir, prev_orienting_normal) /
+      double g_term = fabs(dot(wi, camera->sensor_dir) *
+                           dot(now_ray.dir, prev_orienting_normal)) /
                       (lens_pos - now_ray.org).len2();
       throughput = throughput * g_term *
                    camera->get_bpt_coefficient(px_pos, lens_pos, objplane_pos);
@@ -177,8 +177,8 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
     pdf *= pdf_sample_omega * dot(wi, orienting_normal) /
            (now_ray.org - record.hitpoint).len2();
 
-    double g_term = dot(wi, orienting_normal) *
-                    dot(now_ray.dir, prev_orienting_normal) /
+    double g_term = fabs(dot(wi, orienting_normal) *
+                         dot(now_ray.dir, prev_orienting_normal)) /
                     (now_ray.org - record.hitpoint).len2();
     throughput = throughput * g_term;
 
@@ -235,10 +235,10 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
 
   switch (from_v->type) {
   case ObjectType::LIGHT: {
-    pdf_omega = dot(from_v->orienting_normal, normalized_to);
+    pdf_omega = dot(from_v->orienting_normal, normalized_to) * PI_INV;
   } break;
   case ObjectType::OTHER: {
-    if (!prev_from_idx) {
+    if (!prev_from_v) {
       break;
     }
 
@@ -249,7 +249,7 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
   } break;
   case ObjectType::FULL_SPECUALR:
   case ObjectType::OTHER_TRANSPARENT: {
-    if (!prev_from_idx) {
+    if (!prev_from_v) {
       break;
     }
 
@@ -286,16 +286,16 @@ double calc_mis_weight(Scene *scene, Camera *camera,
                        const std::vector<HitpointInfo> &light_path,
                        const double total_pdf, const uint32_t en,
                        const uint32_t ln) {
-  uint32_t size = eye_path.size() + light_path.size();
+  uint32_t size = en + ln;
   std::vector<const HitpointInfo *> path(size);
   std::vector<double> pi1_pi(size);
 
-  for (uint32_t i = 0; i < light_path.size(); i++) {
+  for (uint32_t i = 0; i < ln; i++) {
     path[i] = &light_path[i];
   }
 
-  for (uint32_t i = 0; i < eye_path.size(); i++) {
-    path[light_path.size() + i] = &eye_path[eye_path.size() - i - 1];
+  for (uint32_t i = 0; i < en; i++) {
+    path[ln + i] = &eye_path[en - i - 1];
   }
 
   pi1_pi[0] =
@@ -437,6 +437,8 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
                                    &final_px_v)) {
           throughput = throughput * camera->get_bpt_coefficient(
                                         px_pos, lens_pos, objplane_pos);
+        } else {
+          continue;
         }
       } break;
       default:
@@ -476,10 +478,9 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         continue;
       }
 
-      double g_term =
-          fabs(dot(light_end_to_eye_end, eye_end->orienting_normal) *
-               dot(light_end_to_eye_end, light_end->orienting_normal)) /
-          light_end_to_eye_end.len2();
+      double g_term = fabs(dot(test_dir, eye_end->orienting_normal) *
+                           dot(test_dir, light_end->orienting_normal)) /
+                      light_end_to_eye_end.len2();
       double mis_weight =
           calc_mis_weight(scene, camera, eye_path, light_path, pdf, en, ln);
       if (std::isnan(mis_weight)) {

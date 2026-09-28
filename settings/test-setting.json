@@ -10,7 +10,7 @@
   },
 
   "camera":{
-    "model":"lens",
+    "model":"pinhole",
     "pinhole":{
       "resolution-w":400,
       "resolution-h":400,
