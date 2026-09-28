@@ -416,12 +416,14 @@ void Renderer::bpt_render() const {
 
   omp_set_num_threads(threads_num);
 
+  std::hash<uint32_t> hash;
+
 #pragma omp parallel for schedule(dynamic, 1)
   for (int32_t v = 0; v < resolution_h; v++) {
     Integrator integrator = Integrator();
 
     for (uint32_t u = 0; u < resolution_w; u++) {
-      Random rnd = Random(u * v);
+      Random rnd = Random(v * resolution_w + u);
 
       for (uint32_t sv = 0; sv < supersamples; sv++) {
         for (uint32_t su = 0; su < supersamples; su++) {

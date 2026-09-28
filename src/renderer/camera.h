@@ -113,7 +113,7 @@ public:
     double pdf_sample_px = 1. / (pixel_width * pixel_height);
     double cos1 = dot(sensor_dir, normalize(hole_pos - px_pos));
     double cos2 = dot(normal, normalize(hole_pos - x1));
-    return pdf_sample_px * (cos2 / cos1) * (hole_pos - px_pos).len2() /
+    return pdf_sample_px * fabs(cos2 / cos1) * (hole_pos - px_pos).len2() /
            (x1 - hole_pos).len2();
   }
 
@@ -228,7 +228,7 @@ public:
     double cos1 = dot(sensor_dir, normalize(lens_pos - px_pos));
     double cos2 = dot(sensor_dir, normalize(objplane_pos - lens_pos));
     return sensitivity *
-           pow(sensor_to_lens * cos1 / (focal_distance * cos2), 2) *
+           pow(sensor_to_lens / focal_distance * fabs(cos1 / cos2), 2) *
            (objplane_pos - lens_pos).len2() / (lens_pos - px_pos).len2();
   }
 
