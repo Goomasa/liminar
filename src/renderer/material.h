@@ -8,6 +8,8 @@
 
 enum class IntegrateMode { PT, LT };
 
+enum class ObjectType { LIGHT, LENS, FULL_SPECUALR, OTHER, OTHER_TRANSPARENT };
+
 class Bxdf {
 public:
   uint64_t id;
@@ -30,6 +32,8 @@ public:
   virtual bool is_specular() const = 0;
 
   virtual void display() const = 0;
+
+  virtual ObjectType get_objtype() const = 0;
 
   static Vec3 sample_cosine_hemisphere(const Vec3 &normal, Random *rnd) {
     Vec3 w = normal, u, v;
@@ -139,6 +143,8 @@ public:
     std::cout << "Lambertian, color: ";
     base_color.display();
   }
+
+  ObjectType get_objtype() const override { return ObjectType::OTHER; }
 };
 
 class Mirror : public Bxdf {
@@ -172,6 +178,8 @@ public:
     std::cout << "Mirror, color: ";
     base_color.display();
   }
+
+  ObjectType get_objtype() const override { return ObjectType::FULL_SPECUALR; }
 };
 
 class Glass : public Bxdf {
@@ -198,6 +206,8 @@ public:
     std::cout << "Glass, ior: " << ior << " , color: ";
     base_color.display();
   }
+
+  ObjectType get_objtype() const override { return ObjectType::FULL_SPECUALR; }
 };
 
 class MicroBrdf : public Bxdf {
@@ -231,6 +241,8 @@ public:
     std::cout << "Microfacet brdf, alpha: " << alpha << " , color: ";
     base_color.display();
   }
+
+  ObjectType get_objtype() const override { return ObjectType::OTHER; }
 
 private:
   double ggx_lambda(const Vec3 &w, const Vec3 &n) const {
@@ -282,6 +294,10 @@ public:
     std::cout << "Microfacet btdf, ior: " << ior << " , alpha: " << alpha
               << " , color: ";
     base_color.display();
+  }
+
+  ObjectType get_objtype() const override {
+    return ObjectType::OTHER_TRANSPARENT;
   }
 
 private:
@@ -385,6 +401,8 @@ public:
     base_color.display();
   }
 
+  ObjectType get_objtype() const override { return ObjectType::OTHER; }
+
 private:
   double ggx_lambda(const Vec3 &w, const Vec3 &n) const {
     double cos_theta = dot(w, n);
@@ -474,6 +492,8 @@ public:
               << " , color: ";
     base_color.display();
   }
+
+  ObjectType get_objtype() const override { return ObjectType::OTHER; }
 
 private:
   double diffuse_prob;

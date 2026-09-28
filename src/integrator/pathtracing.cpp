@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstdint>
 
-void Integrator::pt_integrate(Scene *scene, Ray ray, Random *rnd) {
+void Integrator::pt_integrate(Scene *scene, const Ray &ray, Random *rnd) {
   const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray;
   HitRecord record = HitRecord();
@@ -173,7 +173,7 @@ void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
 }
 */
 
-void Integrator::mis_integrate(Scene *scene, Ray ray, Random *rnd) {
+void Integrator::mis_integrate(Scene *scene, const Ray &ray, Random *rnd) {
   const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray, test_ray = Ray(Point3(), Vec3());
   HitRecord record = HitRecord(), test_record = HitRecord();

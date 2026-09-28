@@ -12,11 +12,31 @@
 constexpr uint32_t DEPTH = 5;
 constexpr uint32_t MAX_DEPTH = 10;
 
+struct PixelResult {
+  uint32_t px_u, px_v;
+  Color value;
+  bool from_light;
+
+  PixelResult() : px_u(0), px_v(0), value(INVALID_VEC), from_light(false) {}
+
+  PixelResult(const uint32_t px_u, const uint32_t px_v, const Color &value,
+              const bool from_light)
+      : px_u(px_u), px_v(px_v), value(value), from_light(from_light) {}
+
+  inline Color get_value() const {
+    if (is_valid(value)) {
+      return value;
+    } else {
+      return Color();
+    }
+  }
+};
+
 class Integrator {
 public:
   Integrator() : value(Color()) {}
 
-  Color get_value() const {
+  inline Color get_value() const {
     if (is_valid(value)) {
       return value;
     } else {
@@ -26,9 +46,15 @@ public:
 
   void reset() { value = Color(); }
 
-  void pt_integrate(Scene *scene, Ray ray, Random *rnd);
+  void pt_integrate(Scene *scene, const Ray &ray, Random *rnd);
 
-  void mis_integrate(Scene *scene, Ray ray, Random *rnd);
+  void mis_integrate(Scene *scene, const Ray &ray, Random *rnd);
+
+  std::vector<PixelResult> bpt_integrate(Scene *scene, Camera *camera,
+                                         const Point3 &px_pos,
+                                         const uint32_t px_u,
+                                         const uint32_t px_v, const Ray &ray,
+                                         Random *rnd);
 
 private:
   Color value;
@@ -44,27 +70,25 @@ inline double roullete(const uint32_t depth) {
   }
 }
 
-enum class ObjectType { LIGHT, LENS, PRIMITIVE };
-
 struct HitpointInfo {
-  Point3 pos;
+  Point3 hitpoint;
   Color throughput;
   double pdf;
   int32_t id;
-  Vec3 orienting_normal, geometry_normal;
+  Vec3 orienting_normal, geometry_normal, obj_normal;
   ObjectType type;
 
   HitpointInfo(const Point3 &pos, const Color &thr, const double pdf,
                const int32_t id, const Vec3 &normal, const Vec3 &geom_normal,
-               const ObjectType &type)
-      : pos(pos), throughput(thr), pdf(pdf), id(id), orienting_normal(normal),
-        geometry_normal(geom_normal), type(type) {}
+               const Vec3 &obj_normal, const ObjectType &type)
+      : hitpoint(pos), throughput(thr), pdf(pdf), id(id),
+        orienting_normal(normal), geometry_normal(geom_normal),
+        obj_normal(obj_normal), type(type) {}
 };
 
-std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera, Ray ray,
-                                       const Point3 &px_pos, Color *final_value,
-                                       Random *rnd);
+std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
+                                       const Ray &ray, const Point3 &px_pos,
+                                       Color *final_value, Random *rnd);
 
 std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
-                                         uint32_t *px_u, uint32_t *px_v,
-                                         Color *final_value, Random *rnd);
+                                         PixelResult *result, Random *rnd);

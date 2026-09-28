@@ -108,10 +108,6 @@ double Glass::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
 
   double r = ior_prev / ior_next;
 
-  if (!check_refraction(dir_prev, normal, r)) {
-    return 1.;
-  }
-
   if (dot(dir_next, normal) < 0.) {
     return 1. - schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
   } else {
