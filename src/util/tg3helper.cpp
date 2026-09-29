@@ -165,6 +165,38 @@ void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
   }
 }
 
+Color load_gltf_emission(const tg3_model &tg_model,
+                         const tg3_primitive &tg_prim) {
+  if (tg_prim.material < 0 ||
+      tg_prim.material >= static_cast<int>(tg_model.materials_count)) {
+    return Color();
+  }
+
+  const tg3_material &tg_material = tg_model.materials[tg_prim.material];
+
+  double strength = 1.;
+  const std::string KHR_EXT_NAME = "KHR_materials_emissive_strength";
+  const std::string EXT_OBJECT_KEY = "emissiveStrength";
+
+  for (uint32_t i = 0; i < tg_material.ext.extensions_count; i++) {
+    if (tg_material.ext.extensions[i].name.data == KHR_EXT_NAME) {
+      const tg3_extension tg_ext = tg_material.ext.extensions[i];
+
+      for (uint32_t j = 0; j < tg_ext.value.object_count; j++) {
+        if (tg_ext.value.object_data[j].key.data == EXT_OBJECT_KEY) {
+          const tg3_value &tg_value = tg_ext.value.object_data[j].value;
+          strength = tg_value.type == 2 ? tg_value.int_val : tg_value.real_val;
+          break;
+        }
+      }
+    }
+  }
+
+  return Color(tg_material.emissive_factor[0], tg_material.emissive_factor[1],
+               tg_material.emissive_factor[2]) *
+         strength;
+}
+
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission,
                         std::unique_ptr<Texture> *color_tex) {
@@ -176,9 +208,7 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
 
   const tg3_material &tg_material = tg_model.materials[tg_prim.material];
 
-  *emission =
-      Color(tg_material.emissive_factor[0], tg_material.emissive_factor[1],
-            tg_material.emissive_factor[2]);
+  *emission = load_gltf_emission(tg_model, tg_prim);
 
   const tg3_pbr_metallic_roughness &tg_pbr_info =
       tg_material.pbr_metallic_roughness;

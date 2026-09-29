@@ -5,6 +5,13 @@
 
 ## Features
 
+- Unidirectional pathtracing with MIS
+- Bidirectional pathtracing
+- BSDFs
+  + Ideal diffuse and specular
+  + Microfacet BRDF/BTDF (GGX)
+  + Mixture BRDF (UE4-like)
+
 ## Dependencies
 - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader.git)
 - [tinygltf](https://github.com/syoyo/tinygltf)
@@ -31,6 +38,8 @@ cmake --build build --config Release
 
 <img src="images/lobby2.jpg" width=60% height=60%/>
 
+<img src="images/poolroom1.jpg" width=60% height=60%/>
+
 <img src="images/fromage.jpg" width=60% height=60%/>
     
 > Model: [Cannelle & Fromage](https://github.com/LuxCoreRender/LuxCoreTestScenes) by Charles Nandeya Ehouman (Sharlybg)
@@ -38,6 +47,7 @@ cmake --build build --config Release
 > GLB version used: obtained from [StokastX/Nexus](https://github.com/StokastX/Nexus)
 
 ## References
+- githole "edubpt" https://github.com/githole/edubpt
 - Dupuy, Jonathan, and Anis Benyoub. "Sampling visible GGX normals with spherical caps." Computer Graphics Forum. Vol. 42. No. 8. 2023.
 - Karis, Brian, and Epic Games. "Real shading in unreal engine 4." Proc. Physically Based Shading Theory Practice 4.3 (2013): 1.
 - https://rayspace.xyz/CG/

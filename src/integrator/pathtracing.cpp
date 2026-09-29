@@ -23,8 +23,10 @@ void Integrator::pt_integrate(Scene *scene, const Ray &ray, Random *rnd) {
     }
 
     Primitive *prim = &scene->primitives[record.id];
-    if (prim->is_light() && dot(record.normal, now_ray.dir) < 0.) {
-      value = value + prim->emission * (throughput / pdf);
+    if (prim->is_light()) {
+      if (dot(record.normal, now_ray.dir) < 0.) {
+        value = value + prim->emission * (throughput / pdf);
+      }
       break;
     }
 
@@ -208,6 +210,8 @@ void Integrator::mis_integrate(Scene *scene, const Ray &ray, Random *rnd) {
                            : prev_pdf_bxdf / (pdf_sample_light + prev_pdf_bxdf);
 
       value = value + prim->emission * mis_weight * (throughput / pdf);
+      break;
+    } else if (prim->is_light()) {
       break;
     }
 
