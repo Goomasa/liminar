@@ -207,7 +207,6 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
     }
   } else {
     std::cout << "meshes: " << tg_model.meshes_count << std::endl;
-    std::cout << "lights: " << tg_model.lights_count << std::endl;
     std::cout << "nodes: " << tg_model.nodes_count << std::endl;
   }
 

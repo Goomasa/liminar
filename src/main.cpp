@@ -1,3 +1,3 @@
 #include "renderer/renderer.h"
 
-int main() { Renderer renderer = Renderer("settings/poolroom1.json"); }
+int main() { Renderer renderer = Renderer("settings/water.json"); }

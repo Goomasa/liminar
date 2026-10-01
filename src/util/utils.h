@@ -106,6 +106,8 @@ struct Vec3 {
     return std::isnan(x) || std::isnan(y) || std::isnan(z);
   }
 
+  inline double sum() const { return x + y + z; }
+
   inline void set(const double d, const uint8_t i) { (&x)[i] = d; }
 };
 

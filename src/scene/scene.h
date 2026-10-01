@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/material.h"
+#include "renderer/medium.h"
 #include "renderer/ray.h"
 #include "scene/bvh.h"
 #include "scene/primitive.h"
@@ -17,6 +18,7 @@ struct Scene {
   std::vector<std::unique_ptr<Bxdf>> bxdfs;
   std::vector<std::unique_ptr<Shape>> shapes;
   std::vector<std::unique_ptr<Texture>> textures;
+  std::vector<std::unique_ptr<Medium>> mediums;
   std::vector<Primitive> primitives;
   std::vector<uint32_t> lights;
   std::unique_ptr<Texture> background;

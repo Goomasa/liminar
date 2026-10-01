@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/material.h"
+#include "renderer/medium.h"
 #include "renderer/ray.h"
 #include "scene/aabb.h"
 #include "util/utils.h"
@@ -277,16 +278,19 @@ public:
   Shape *shape;
   Bxdf *bxdf;
   Color emission;
+  Medium *medium;
   uint32_t id;
 
-  Primitive(Shape *shape, const uint32_t id)
-      : shape(shape), emission(Color()), id(id) {}
+  Primitive(Shape *shape, const uint32_t id, Medium *medium = nullptr)
+      : shape(shape), emission(Color()), medium(medium), id(id) {}
 
-  Primitive(Shape *shape, Bxdf *bxdf, const uint32_t id)
-      : shape(shape), bxdf(bxdf), emission(Color()), id(id) {}
+  Primitive(Shape *shape, Bxdf *bxdf, const uint32_t id,
+            Medium *medium = nullptr)
+      : shape(shape), bxdf(bxdf), emission(Color()), medium(medium), id(id) {}
 
-  Primitive(Shape *shape, Bxdf *bxdf, const Color &emission, const uint32_t id)
-      : shape(shape), bxdf(bxdf), emission(emission), id(id) {}
+  Primitive(Shape *shape, Bxdf *bxdf, const Color &emission, const uint32_t id,
+            Medium *medium = nullptr)
+      : shape(shape), bxdf(bxdf), emission(emission), medium(medium), id(id) {}
 
   inline void hit(Ray &ray, HitRecord *record) const {
     if (shape->hit(ray, record)) {

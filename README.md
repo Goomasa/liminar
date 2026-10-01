@@ -7,10 +7,11 @@
 
 - Unidirectional pathtracing with MIS
 - Bidirectional pathtracing
-- BSDFs
+- BSDFs:
   + Ideal diffuse and specular
   + Microfacet BRDF/BTDF (GGX)
   + Mixture BRDF (UE4-like)
+- Camera: pinhole, thin lens
 
 ## Dependencies
 - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader.git)
