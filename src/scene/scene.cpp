@@ -1,5 +1,6 @@
 #include "scene.h"
 #include "renderer/material.h"
+#include "renderer/medium.h"
 #include "renderer/ray.h"
 #include "scene/primitive.h"
 #include "scene/texture.h"
@@ -131,6 +132,7 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
       Vec3(material.emission[0], material.emission[1], material.emission[2]);
 
   std::unique_ptr<Bxdf> bxdf;
+  std::unique_ptr<Medium> medium;
 
   if (ke.max() > EPS) {
     prim->emission = ke;
@@ -150,22 +152,41 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
     bxdf = std::make_unique<Mirror>(kd, color_texture_ptr);
   } break;
   case 5: {
-    // auto ns = material.shininess / 1000;
     double pr = material.roughness;
     bxdf = std::make_unique<MicroBrdf>(kd, pr, color_texture_ptr);
   } break;
   case 7: {
     const double ior = material.ior;
+
+    std::map<std::string, std::string> unknown_params =
+        material.unknown_parameter;
+    Color sigma_a, sigma_s;
+    double g;
+    if (get_medium_parameter(unknown_params, "sigma_a", &sigma_a) &&
+        get_medium_parameter(unknown_params, "sigma_s", &sigma_s) &&
+        get_medium_parameter(unknown_params, "g", &g)) {
+      medium = std::make_unique<Medium>(sigma_a, sigma_s, g);
+    }
+
     bxdf = std::make_unique<Glass>(kd, ior, color_texture_ptr);
   } break;
   case 9: {
-    // auto ns = material.shininess / 1000;
     double pr = material.roughness;
     const double ior = material.ior;
+
+    std::map<std::string, std::string> unknown_params =
+        material.unknown_parameter;
+    Color sigma_a, sigma_s;
+    double g;
+    if (get_medium_parameter(unknown_params, "sigma_a", &sigma_a) &&
+        get_medium_parameter(unknown_params, "sigma_s", &sigma_s) &&
+        get_medium_parameter(unknown_params, "g", &g)) {
+      medium = std::make_unique<Medium>(sigma_a, sigma_s, g);
+    }
+
     bxdf = std::make_unique<MicroBtdf>(kd, ior, pr, color_texture_ptr);
   } break;
   case 11: {
-    // auto ns = material.shininess / 1000;
     double pr = material.roughness;
     double pm = material.metallic;
     bxdf = std::make_unique<MixtureBrdf>(kd, pm, pr, color_texture_ptr);
@@ -178,6 +199,11 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
 
   prim->bxdf = bxdf.get();
   bxdfs.emplace_back(std::move(bxdf));
+
+  if (medium) {
+    prim->medium = medium.get();
+    mediums.emplace_back(std::move(medium));
+  }
 
   return;
 }

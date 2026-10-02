@@ -312,8 +312,7 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
 double calc_mis_weight(Scene *scene, Camera *camera,
                        const std::vector<HitpointInfo> &eye_path,
                        const std::vector<HitpointInfo> &light_path,
-                       const double total_pdf, const uint32_t en,
-                       const uint32_t ln) {
+                       const uint32_t en, const uint32_t ln) {
   uint32_t size = en + ln;
   std::vector<const HitpointInfo *> path(size);
   std::vector<double> pi1_pi(size);
@@ -349,7 +348,8 @@ double calc_mis_weight(Scene *scene, Camera *camera,
   }
 
   std::vector<double> p(size + 1);
-  p[ln] = total_pdf;
+  // p[ln] = total_pdf;
+  p[ln] = 1.;
   for (int32_t i = ln - 1; i >= 0; i--) {
     p[i] = p[i + 1] / pi1_pi[i];
   }
@@ -373,7 +373,7 @@ double calc_mis_weight(Scene *scene, Camera *camera,
     sum += p_;
   }
 
-  return total_pdf / sum;
+  return p[ln] / sum;
 }
 
 std::vector<PixelResult>
@@ -395,15 +395,15 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
   if (eyepath_result.value != INVALID_VEC) {
     double total_pdf = eye_path[eye_path.size() - 1].pdf;
     double mis_weight = calc_mis_weight(scene, camera, eye_path, light_path,
-                                        total_pdf, eye_path.size(), 0);
+                                        eye_path.size(), 0);
     bpt_results.emplace_back(PixelResult(
         px_u, px_v, mis_weight * eyepath_result.get_value(), false));
   }
 
   if (lightpath_result.value != INVALID_VEC) {
     double total_pdf = light_path[light_path.size() - 1].pdf;
-    double mis_weight = calc_mis_weight(scene, camera, eye_path, light_path,
-                                        total_pdf, 0, light_path.size());
+    double mis_weight = calc_mis_weight(scene, camera, eye_path, light_path, 0,
+                                        light_path.size());
     bpt_results.emplace_back(lightpath_result.px_u, lightpath_result.px_v,
                              mis_weight * lightpath_result.get_value(), true);
   }
@@ -525,7 +525,7 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
                            dot(test_dir, light_end->geometry_normal)) /
                       light_end_to_eye_end.len2();
       double mis_weight =
-          calc_mis_weight(scene, camera, eye_path, light_path, pdf, en, ln);
+          calc_mis_weight(scene, camera, eye_path, light_path, en, ln);
       if (std::isnan(mis_weight) || mis_weight > INF || mis_weight < 0) {
         continue;
       }

@@ -3,6 +3,11 @@
 #include "util/random.h"
 #include "util/utils.h"
 #include <cmath>
+#include <cstdint>
+#include <exception>
+#include <map>
+#include <sstream>
+#include <string>
 
 struct Medium {
   // homogeneous medium
@@ -74,4 +79,45 @@ struct Medium {
     double denom = pow(1. + g * g + 2 * g * cos_theta, 1.5);
     return 0.25 * PI_INV * (1 - g * g) / denom;
   }
+
+  void display() const { sigma_t.display(); }
 };
+
+static bool
+get_medium_parameter(std::map<std::string, std::string> &unknown_params,
+                     const std::string &name, Color *value) {
+  const std::string &param_str = unknown_params[name];
+  std::string word;
+  std::stringstream param_ss{param_str};
+
+  std::vector<double> v(3, 0.1);
+  for (uint32_t i = 0; i < 3; i++) {
+    if (std::getline(param_ss, word, ' ')) {
+      try {
+        v[i] = std::stod(word);
+      } catch (std::exception e) {
+        std::cout << e.what() << std::endl;
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  *value = Color(v[0], v[1], v[2]);
+  return true;
+}
+
+static bool
+get_medium_parameter(std::map<std::string, std::string> &unknown_params,
+                     const std::string &name, double *value) {
+  const std::string &param_str = unknown_params[name];
+
+  try {
+    *value = std::stod(param_str);
+    return true;
+  } catch (std::exception e) {
+    std::cout << e.what() << std::endl;
+    return false;
+  }
+}
