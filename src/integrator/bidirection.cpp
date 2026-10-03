@@ -8,14 +8,6 @@
 #include <cstdint>
 #include <vector>
 
-inline double correct_shading_normal(const Vec3 &wi, const Vec3 &wo,
-                                     const Vec3 &geometry_normal,
-                                     const Vec3 &shading_normal) {
-  double numer = dot(wi, shading_normal) * dot(wo, geometry_normal);
-  double denom = dot(wi, geometry_normal) * dot(wo, shading_normal);
-  return denom < EPS ? 0. : fabs(numer / denom);
-}
-
 std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
                                        const Ray &ray, const Point3 &px_pos,
                                        Color *final_value, Random *rnd) {
@@ -206,15 +198,15 @@ std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
 
     Primitive *prim = &scene->primitives[record.id];
 
-    vertices.emplace_back(HitpointInfo(record.hitpoint, throughput, pdf,
-                                       record.id, orienting_normal,
-                                       orienting_geom_normal, record.normal,
-                                       record.uv, prim->bxdf->get_objtype()));
-
     if (prim->is_light()) {
       result->value = INVALID_VEC;
       break;
     }
+
+    vertices.emplace_back(HitpointInfo(record.hitpoint, throughput, pdf,
+                                       record.id, orienting_normal,
+                                       orienting_geom_normal, record.normal,
+                                       record.uv, prim->bxdf->get_objtype()));
 
     bool into = dot(orienting_normal, record.normal) > 0.;
     Vec3 wo = prim->bxdf->sample(wi, orienting_normal, into, rnd, mode);
@@ -302,6 +294,9 @@ double calc_sampling_pdf(const std::vector<const HitpointInfo *> &path,
 
     return camera->pdf_sample_x1(px_pos, hole_pos, objplane_pos, to_v->hitpoint,
                                  to_v->geometry_normal);
+  } break;
+  case ObjectType::MEDIUM: {
+    return 0.;
   } break;
   }
 

@@ -14,7 +14,8 @@ enum class ObjectType {
   PINHOLE,
   FULL_SPECUALR,
   OTHER,
-  OTHER_TRANSPARENT
+  OTHER_TRANSPARENT,
+  MEDIUM
 };
 
 class Bxdf {

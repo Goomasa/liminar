@@ -4,6 +4,7 @@ set(exe_file
     renderer/renderer.cpp
     integrator/pathtracing.cpp
     integrator/bidirection.cpp
+    integrator/volbpt.cpp
     scene/scene.cpp
     scene/bvh.cpp
     scene/primitive.cpp

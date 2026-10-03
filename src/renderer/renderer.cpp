@@ -434,7 +434,7 @@ void Renderer::bpt_render() const {
                 camera->get_pixel_pos(u, v, su, sv, supersamples, &rnd);
             Ray ray = camera->get_first_ray(&rnd, pixel_pos);
 
-            std::vector<PixelResult> bpt_result = integrator.bpt_integrate(
+            std::vector<PixelResult> bpt_result = integrator.volbpt_integrate(
                 scene.get(), camera.get(), pixel_pos, u, v, ray, &rnd);
             for (PixelResult &result : bpt_result) {
               uint32_t idx =
