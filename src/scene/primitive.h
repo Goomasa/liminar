@@ -23,15 +23,17 @@ struct Vertex {
 
 class Shape {
 public:
+  double area;
+
   virtual ~Shape() = default;
   virtual AABB get_bbox() const = 0;
   virtual bool hit(Ray &ray, HitRecord *record) const = 0;
   virtual Point3 get_center() const = 0;
-  virtual double get_area() const = 0;
-  virtual double pdf_sample_surface_area() const = 0;
   virtual Point3 sample_surface(Random *rnd, double *pdf) const = 0;
   virtual Vec3 get_normal(const Point3 &pos) const = 0;
   virtual Vec2 get_texcoord(const Point3 &pos) const = 0;
+
+  inline double pdf_sample_surface_area() const { return 1. / area; }
 };
 
 class Triangle : public Shape {
@@ -44,6 +46,8 @@ public:
     p = Vertex(vp, geometry_normal);
     q = Vertex(vq, geometry_normal);
     r = Vertex(vr, geometry_normal);
+
+    area = 0.5 * cross(vq - vp, vr - vp).len();
   }
 
   Triangle(const Vertex &vp, const Vertex &vq, const Vertex &vr)
@@ -57,6 +61,8 @@ public:
       q.normal = geometry_normal;
       r.normal = geometry_normal;
     }
+
+    area = 0.5 * cross(pq, pr).len();
   }
 
   AABB get_bbox() const override {
@@ -69,18 +75,6 @@ public:
 
   Point3 get_center() const override {
     return (p.position + q.position + r.position) / 3.;
-  }
-
-  double get_area() const override {
-    Vec3 pq = q.position - p.position;
-    Vec3 pr = r.position - p.position;
-    return 0.5 * cross(pq, pr).len();
-  }
-
-  double pdf_sample_surface_area() const override {
-    Vec3 pq = q.position - p.position;
-    Vec3 pr = r.position - p.position;
-    return 1. / (cross(pq, pr).len() * 0.5);
   }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override;
@@ -125,7 +119,9 @@ public:
   Point3 center;
   double radius;
 
-  Sphere(const Point3 &center, const double r) : center(center), radius(r) {}
+  Sphere(const Point3 &center, const double r) : center(center), radius(r) {
+    area = 4. * PI * radius * radius;
+  }
 
   AABB get_bbox() const override {
     return AABB(center - Vec3(radius), center + Vec3(radius));
@@ -134,13 +130,6 @@ public:
   bool hit(Ray &ray, HitRecord *record) const override;
 
   Point3 get_center() const override { return center; }
-
-  double get_area() const override { return 4. * PI * radius * radius; }
-
-  double pdf_sample_surface_area() const override {
-    // do not use
-    return 1.;
-  }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override {
     // do not use
@@ -165,7 +154,9 @@ public:
 
   Cylinder(const Point3 &bottom, const Vec3 &dir, const double r,
            const double h)
-      : bottom(bottom), dir(normalize(dir)), radius(r), height(h) {}
+      : bottom(bottom), dir(normalize(dir)), radius(r), height(h) {
+    area = 2. * PI * radius * height;
+  }
 
   AABB get_bbox() const override {
     Point3 top = bottom + height * dir;
@@ -176,13 +167,6 @@ public:
   bool hit(Ray &ray, HitRecord *record) const override;
 
   Point3 get_center() const override { return bottom + dir * height * 0.5; }
-
-  double get_area() const override { return 2. * PI * radius * height; }
-
-  double pdf_sample_surface_area() const override {
-    // do not use
-    return 1.;
-  }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override {
     // do not use
@@ -204,7 +188,9 @@ public:
   double radius;
 
   Disk(const Point3 &c, const Vec3 &n, const double r)
-      : center(c), normal(normalize(n)), radius(r) {}
+      : center(c), normal(normalize(n)), radius(r) {
+    area = PI * radius * radius;
+  }
 
   AABB get_bbox() const override {
     return AABB(center - Vec3(radius), center + Vec3(radius)).fix();
@@ -213,12 +199,6 @@ public:
   bool hit(Ray &ray, HitRecord *record) const override;
 
   Point3 get_center() const override { return center; }
-
-  double get_area() const override { return PI * radius * radius; }
-
-  double pdf_sample_surface_area() const override {
-    return 1. / (PI * radius * radius);
-  }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override;
 
@@ -244,6 +224,8 @@ public:
 
     l1 = (maxp - minp)[(vertical_axis + 1) % 3];
     l2 = (maxp - minp)[(vertical_axis + 2) % 3];
+
+    area = l1 * l2;
   }
 
   AABB get_bbox() const override { return AABB(minp, maxp).fix(); }
@@ -252,12 +234,8 @@ public:
 
   Point3 get_center() const override { return (minp + maxp) * 0.5; }
 
-  double get_area() const override { return l1 * l2; }
-
-  double pdf_sample_surface_area() const override { return 1. / (l1 * l2); }
-
   Point3 sample_surface(Random *rnd, double *pdf) const override {
-    *pdf = 1. / (l1 * l2);
+    *pdf = 1. / area;
     double du = l1 * rnd->gen(), dv = l2 * rnd->gen();
     if (vertical_axis == 0) {
       return minp + Vec3(0, du, dv);

@@ -49,7 +49,7 @@ Point3 Triangle::sample_surface(Random *rnd, double *pdf) const {
     r2 = 1. - r2;
   }
 
-  *pdf = 1. / (cross(pq, pr).len() * 0.5);
+  *pdf = 1. / area;
   return p.position + pq * r1 + pr * r2;
 }
 
@@ -152,7 +152,7 @@ Point3 Disk::sample_surface(Random *rnd, double *pdf) const {
                                 : normalize(cross(Vec3(1, 0, 0), normal));
   Vec3 v = cross(normal, u);
 
-  *pdf = 1. / (PI * radius * radius);
+  *pdf = 1. / area;
   return center + u * r * cos(theta) + v * r * sin(theta);
 }
 

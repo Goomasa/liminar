@@ -10,13 +10,16 @@
 #include <string>
 
 struct Medium {
-  // homogeneous medium
+  // homogeneous medium, no emission
   Color sigma_a, sigma_s, sigma_t;
+  Color scattering_albedo;
   double g;
+  uint64_t id;
 
   Medium(const Color &sigma_a, const Color &sigma_s, const double g)
       : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
     sigma_t = sigma_a + sigma_s;
+    scattering_albedo = sigma_s / sigma_t;
   }
 
   double sample_distance(const Color &throughput, Random *rnd) const {

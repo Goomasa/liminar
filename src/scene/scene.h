@@ -112,6 +112,16 @@ private:
     return nullptr;
   }
 
+  inline std::unique_ptr<Medium> *search_medium(const uint64_t key) {
+    for (auto &medium : mediums) {
+      if (medium->id == key) {
+        return &medium;
+      }
+    }
+
+    return nullptr;
+  }
+
   void set_test_primitive();
 
   void set_sample_scene1();

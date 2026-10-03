@@ -21,6 +21,19 @@ inline Color load_mtl_emission(const auto &material) {
   return Vec3(material.emission[0], material.emission[1], material.emission[2]);
 }
 
+inline void load_mtl_medium(const auto &material,
+                            std::unique_ptr<Medium> *medium) {
+  std::map<std::string, std::string> unknown_params =
+      material.unknown_parameter;
+  Color sigma_a, sigma_s;
+  double g;
+  if (get_medium_parameter(unknown_params, "sigma_a", &sigma_a) &&
+      get_medium_parameter(unknown_params, "sigma_s", &sigma_s) &&
+      get_medium_parameter(unknown_params, "g", &g)) {
+    *medium = std::make_unique<Medium>(sigma_a, sigma_s, g);
+  }
+}
+
 void Scene::load_obj(const std::string &filename, const std::string &dir_path,
                      const double scale, const Vec3 &tr) {
   tinyobj::ObjReaderConfig config;
@@ -89,9 +102,10 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
       shapes.emplace_back(std::move(shape));
 
       int32_t mtl_idx = obj_shape.mesh.material_ids[f];
-      uint64_t hashed_bxdf_id =
+      uint64_t hashed_id =
           std::hash<std::string>()(filename + std::to_string(mtl_idx));
-      auto corresponding_bxdf = search_bxdf(hashed_bxdf_id);
+      auto corresponding_bxdf = search_bxdf(hashed_id);
+      auto corresponding_medium = search_medium(hashed_id);
 
       if (corresponding_bxdf) {
         prim.bxdf = corresponding_bxdf->get();
@@ -114,7 +128,22 @@ void Scene::load_obj(const std::string &filename, const std::string &dir_path,
           }
         }
 
-        prim.bxdf->id = hashed_bxdf_id;
+        prim.bxdf->id = hashed_id;
+      }
+
+      if (corresponding_medium) {
+        prim.medium = corresponding_medium->get();
+      } else if (!corresponding_bxdf) {
+        std::unique_ptr<Medium> medium;
+        if (mtl_idx >= 0) {
+          load_mtl_medium(obj_materials[mtl_idx], &medium);
+        }
+
+        if (medium) {
+          prim.medium = medium.get();
+          medium->id = hashed_id;
+          mediums.emplace_back(std::move(medium));
+        }
       }
 
       primitives.emplace_back(std::move(prim));
@@ -132,7 +161,6 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
       Vec3(material.emission[0], material.emission[1], material.emission[2]);
 
   std::unique_ptr<Bxdf> bxdf;
-  std::unique_ptr<Medium> medium;
 
   if (ke.max() > EPS) {
     prim->emission = ke;
@@ -157,33 +185,11 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
   } break;
   case 7: {
     const double ior = material.ior;
-
-    std::map<std::string, std::string> unknown_params =
-        material.unknown_parameter;
-    Color sigma_a, sigma_s;
-    double g;
-    if (get_medium_parameter(unknown_params, "sigma_a", &sigma_a) &&
-        get_medium_parameter(unknown_params, "sigma_s", &sigma_s) &&
-        get_medium_parameter(unknown_params, "g", &g)) {
-      medium = std::make_unique<Medium>(sigma_a, sigma_s, g);
-    }
-
     bxdf = std::make_unique<Glass>(kd, ior, color_texture_ptr);
   } break;
   case 9: {
     double pr = material.roughness;
     const double ior = material.ior;
-
-    std::map<std::string, std::string> unknown_params =
-        material.unknown_parameter;
-    Color sigma_a, sigma_s;
-    double g;
-    if (get_medium_parameter(unknown_params, "sigma_a", &sigma_a) &&
-        get_medium_parameter(unknown_params, "sigma_s", &sigma_s) &&
-        get_medium_parameter(unknown_params, "g", &g)) {
-      medium = std::make_unique<Medium>(sigma_a, sigma_s, g);
-    }
-
     bxdf = std::make_unique<MicroBtdf>(kd, ior, pr, color_texture_ptr);
   } break;
   case 11: {
@@ -199,12 +205,6 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
 
   prim->bxdf = bxdf.get();
   bxdfs.emplace_back(std::move(bxdf));
-
-  if (medium) {
-    prim->medium = medium.get();
-    mediums.emplace_back(std::move(medium));
-  }
-
   return;
 }
 
