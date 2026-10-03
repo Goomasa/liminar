@@ -21,7 +21,7 @@ struct Medium {
       : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
     sigma_t = sigma_a + sigma_s;
     scattering_albedo = sigma_s / sigma_t;
-    discrete_pdf = sigma_t / sigma_t.sum();
+    discrete_pdf = (Vec3(sigma_t.sum()) - sigma_t) / (sigma_t.sum() * 2);
   }
 
   double sample_distance(Random *rnd) const {
@@ -61,7 +61,7 @@ struct Medium {
     return Color(exp(-sigma_t.x * d), exp(-sigma_t.y * d), exp(-sigma_t.z * d));
   }
 
-  Vec3 sample_phasefn(const Vec3 &dir_prev, Random *rnd) const {
+  Vec3 sample_phasefn(const Vec3 &w, Random *rnd) const {
     // Henyey–Greenstein phase function
     double r = rnd->gen();
     double tmp = (1. - g * g) / (1. + g - 2. * g * r);
@@ -70,7 +70,7 @@ struct Medium {
     double sin_theta = sqrt(1. - cos_theta * cos_theta);
     double phi = 2. * PI * rnd->gen();
 
-    Vec3 w = dir_prev, u, v;
+    Vec3 u, v;
     if (fabs(w.x) > EPS) {
       u = normalize(cross(Vec3(0, 1, 0), w));
     } else {
@@ -82,8 +82,8 @@ struct Medium {
                      w * cos_theta);
   }
 
-  inline double eval_phasefn(const Vec3 &dir_prev, const Vec3 &dir_next) const {
-    double cos_theta = dot(dir_prev, dir_next);
+  inline double eval_phasefn(const Vec3 &w, const Vec3 &dir_next) const {
+    double cos_theta = dot(w, dir_next);
     double denom = pow(1. + g * g + 2 * g * cos_theta, 1.5);
     return 0.25 * PI_INV * (1 - g * g) / denom;
   }

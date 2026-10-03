@@ -88,9 +88,12 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
       pdf *= camera->pdf_sample_x1(px_pos, lens_hole_pos, objplane_pos,
                                    record.hitpoint, orienting_geom_normal);
     } else {
-      pdf *= pdf_sample_omega *
-             (scene_hit ? dot(wo, orienting_geom_normal) : 1.) /
-             (now_ray.org - record.hitpoint).len2();
+      if (scene_hit) {
+        pdf *= pdf_sample_omega * dot(wo, orienting_geom_normal) /
+               (now_ray.org - record.hitpoint).len2();
+      } else {
+        pdf *= pdf_sample_omega / (sampled_distance * sampled_distance);
+      }
     }
 
     double roullete_prob = roullete(depth);
@@ -100,12 +103,12 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
     }
     pdf *= roullete_prob;
 
-    double g_term = calc_g_term(
-        (now_ray.org - record.hitpoint).len2(), wo, orienting_geom_normal,
-        prev_orienting_geom_normal, !scene_hit, prev_is_scatter);
-    throughput = throughput * g_term;
-
     if (scene_hit) {
+      double g_term = calc_g_term(
+          (record.hitpoint - now_ray.org).len2(), wo, orienting_geom_normal,
+          prev_orienting_geom_normal, !scene_hit, prev_is_scatter);
+      throughput = throughput * g_term;
+
       Primitive *prim = &scene->primitives[record.id];
       if (prim->is_light()) {
         if (dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
@@ -151,6 +154,11 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
       }
     } else if (now_medium) {
       // scatter in medium
+      double g_term = calc_g_term(
+          sampled_distance * sampled_distance, wo, orienting_geom_normal,
+          prev_orienting_geom_normal, !scene_hit, prev_is_scatter);
+      throughput = throughput * g_term;
+
       Point3 scatter_point = now_ray.org + now_ray.dir * sampled_distance;
 
       vertices.emplace_back(
@@ -159,7 +167,7 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
                        record.uv, ObjectType::MEDIUM, now_medium));
 
       bool into = dot(orienting_normal, record.normal) > 0.;
-      Vec3 wi = now_medium->sample_phasefn(wo, rnd);
+      Vec3 wi = now_medium->sample_phasefn(now_ray.dir, rnd);
 
       now_ray = Ray(scatter_point, wi);
       throughput = throughput * now_medium->sigma_s;
@@ -261,15 +269,6 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
                                 ? record.geometry_normal
                                 : -1. * record.geometry_normal;
 
-    pdf *= pdf_sample_omega *
-           (scene_hit ? dot(wi, orienting_geom_normal) : 1.) /
-           (now_ray.org - record.hitpoint).len2();
-
-    double g_term = calc_g_term(
-        (now_ray.org - record.hitpoint).len2(), wi, orienting_geom_normal,
-        prev_orienting_geom_normal, !scene_hit, prev_is_scatter);
-    throughput = throughput * g_term;
-
     double roullete_prob = roullete(depth);
     if (rnd->gen() > roullete_prob) {
       result->value = INVALID_VEC;
@@ -278,6 +277,14 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
     pdf *= roullete_prob;
 
     if (scene_hit) {
+      pdf *= pdf_sample_omega * dot(wi, orienting_geom_normal) /
+             (now_ray.org - record.hitpoint).len2();
+
+      double g_term = calc_g_term(
+          (now_ray.org - record.hitpoint).len2(), wi, orienting_geom_normal,
+          prev_orienting_geom_normal, !scene_hit, prev_is_scatter);
+      throughput = throughput * g_term;
+
       Primitive *prim = &scene->primitives[record.id];
 
       if (prim->is_light()) {
@@ -318,6 +325,12 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
       }
     } else if (now_medium) {
       // scater in medium
+      pdf *= pdf_sample_omega / (sampled_distance * sampled_distance);
+      double g_term = calc_g_term(
+          sampled_distance * sampled_distance, wi, orienting_geom_normal,
+          prev_orienting_geom_normal, !scene_hit, prev_is_scatter);
+      throughput = throughput * g_term;
+
       Point3 scatter_point = now_ray.org + now_ray.dir * sampled_distance;
 
       vertices.emplace_back(
@@ -325,7 +338,7 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
                        orienting_normal, orienting_geom_normal, record.normal,
                        record.uv, ObjectType::MEDIUM, now_medium));
 
-      Vec3 wo = now_medium->sample_phasefn(wi, rnd);
+      Vec3 wo = now_medium->sample_phasefn(now_ray.dir, rnd);
       now_ray = Ray(scatter_point, wo);
       throughput = throughput * now_medium->sigma_s;
       pdf_sample_omega = 1.;
@@ -407,7 +420,7 @@ double calc_volpath_sampling_pdf(const std::vector<const HitpointInfo *> &path,
       return 0.;
     }
     pdf_omega = from_v->medium->eval_phasefn(
-        normalize(prev_from_v->hitpoint - from_v->hitpoint), normalized_to);
+        normalize(from_v->hitpoint - prev_from_v->hitpoint), normalized_to);
   } break;
   }
 
@@ -597,10 +610,9 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         }
       } break;
       case ObjectType::MEDIUM: {
-        Vec3 dir_prev =
-            normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
+        Vec3 w = normalize(eye_end->hitpoint - eye_path[en - 2].hitpoint);
         throughput = throughput * eye_end->medium->sigma_s *
-                     eye_end->medium->eval_phasefn(dir_prev, -1. * test_dir);
+                     eye_end->medium->eval_phasefn(w, -1. * test_dir);
       } break;
       default:
         continue;
@@ -643,10 +655,9 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         }
       } break;
       case ObjectType::MEDIUM: {
-        Vec3 dir_prev =
-            normalize(light_path[ln - 2].hitpoint - light_end->hitpoint);
-        throughput =
-            throughput * light_end->medium->eval_phasefn(dir_prev, test_dir);
+        Vec3 w = normalize(light_end->hitpoint - light_path[ln - 2].hitpoint);
+        throughput = throughput * light_end->medium->sigma_s *
+                     light_end->medium->eval_phasefn(w, test_dir);
       } break;
       default:
         continue;
@@ -656,12 +667,6 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         Medium *medium = eye_end->medium ? eye_end->medium : light_end->medium;
         throughput =
             throughput * medium->calc_transmittance(light_end_to_eye_end.len());
-
-        if (eye_end->type == ObjectType::MEDIUM) {
-          pdf *= medium->pdf_sample_distance(light_end_to_eye_end.len());
-        } else {
-          pdf *= medium->pdf_hit_to_end(light_end_to_eye_end.len());
-        }
       }
 
       double g_term = calc_g_term(

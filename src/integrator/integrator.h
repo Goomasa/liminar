@@ -10,8 +10,8 @@
 #include <cstdint>
 #include <vector>
 
-constexpr uint32_t DEPTH = 5;
-constexpr uint32_t MAX_DEPTH = 10;
+constexpr uint32_t DEPTH = 10;
+constexpr uint32_t MAX_DEPTH = 15;
 
 struct PixelResult {
   uint32_t px_u, px_v;
