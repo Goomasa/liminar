@@ -57,3 +57,16 @@ Ke 40.0 40.0 40.0
 Ni 1.0
 d 1.0
 illum 0
+
+newmtl Medium
+Ns 0.0
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ke 0 0 0
+Ni 1.1
+d 1.0
+illum 7
+sigma_a 0.01 0.01 0.01
+sigma_s 0.03 0.02 0.01
+g 0.7

@@ -13,6 +13,7 @@ struct Medium {
   // homogeneous medium, no emission
   Color sigma_a, sigma_s, sigma_t;
   Color scattering_albedo;
+  Vec3 discrete_pdf;
   double g;
   uint64_t id;
 
@@ -20,10 +21,10 @@ struct Medium {
       : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
     sigma_t = sigma_a + sigma_s;
     scattering_albedo = sigma_s / sigma_t;
+    discrete_pdf = sigma_t / sigma_t.sum();
   }
 
-  double sample_distance(const Color &throughput, Random *rnd) const {
-    Vec3 discrete_pdf = throughput / throughput.sum();
+  double sample_distance(Random *rnd) const {
     double r = rnd->gen();
     uint8_t sampled_idx;
     if (r < discrete_pdf.x) {
@@ -42,18 +43,22 @@ struct Medium {
     return st * exp(-1. * st * distance);
   }
 
-  double pdf_sample_distance(const Color &throughput, const double d) const {
-    Vec3 discrete_pdf = throughput / throughput.sum();
+  inline double pdf_sample_distance(const double d) const {
+    // P(s=d)
     return discrete_pdf.x * pdf_sample_disctance(sigma_t.x, d) +
            discrete_pdf.y * pdf_sample_disctance(sigma_t.y, d) +
            discrete_pdf.z * pdf_sample_disctance(sigma_t.z, d);
   }
 
-  double calc_transmittance(const Color &throughput, const double d) const {
-    Vec3 discrete_pdf = throughput / throughput.sum();
+  inline double pdf_hit_to_end(const double d) const {
+    // P(s>=d)
     return discrete_pdf.x * exp(-sigma_t.x * d) +
            discrete_pdf.y * exp(-sigma_t.y * d) +
            discrete_pdf.z * exp(-sigma_t.z * d);
+  }
+
+  inline Color calc_transmittance(const double d) const {
+    return Color(exp(-sigma_t.x * d), exp(-sigma_t.y * d), exp(-sigma_t.z * d));
   }
 
   Vec3 sample_phasefn(const Vec3 &dir_prev, Random *rnd) const {

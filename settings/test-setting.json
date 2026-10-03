@@ -37,9 +37,9 @@
   },
 
   "renderer":{
-    "supersamples":4,
-    "samples-per-superpixel":4,
+    "supersamples":8,
+    "samples-per-superpixel":8,
     "threads-num":10,
-    "integrator":"bpt"
+    "integrator":"pt"
   }
 }

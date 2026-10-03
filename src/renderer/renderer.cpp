@@ -191,7 +191,7 @@ void Renderer::pt_render() const {
             Ray ray = camera->get_first_ray(&rnd, pixel_pos);
 
             integrator.reset();
-            integrator.mis_integrate(scene.get(), ray, &rnd);
+            integrator.volpath_mis_integrate(scene.get(), ray, &rnd);
             accumlated =
                 accumlated + integrator.get_value() *
                                  camera->get_pt_coefficient(ray, pixel_pos);

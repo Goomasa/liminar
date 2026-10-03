@@ -50,6 +50,8 @@ public:
 
   void mis_integrate(Scene *scene, const Ray &ray, Random *rnd);
 
+  void volpath_mis_integrate(Scene *scene, const Ray &ray, Random *rnd);
+
   std::vector<PixelResult> bpt_integrate(Scene *scene, Camera *camera,
                                          const Point3 &px_pos,
                                          const uint32_t px_u,
