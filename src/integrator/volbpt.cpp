@@ -132,11 +132,11 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
 
       bool is_transmit = dot(wi, orienting_geom_normal) < 0.;
 
-      vertices.emplace_back(
-          HitpointInfo(record.hitpoint, throughput, pdf, record.id,
-                       orienting_normal, orienting_geom_normal, record.normal,
-                       record.uv, prim->bxdf->get_objtype(),
-                       prim->medium && is_transmit ? nullptr : now_medium));
+      vertices.emplace_back(HitpointInfo(
+          record.hitpoint, throughput, pdf, record.id, orienting_normal,
+          orienting_geom_normal, record.normal, record.uv,
+          prim->bxdf->get_objtype(),
+          prim->medium && is_transmit ? prim->medium : now_medium));
 
       now_ray = is_transmit
                     ? Ray(record.hitpoint - EPS * orienting_geom_normal, wi)
@@ -167,7 +167,7 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
                        record.uv, ObjectType::MEDIUM, now_medium));
 
       bool into = dot(orienting_normal, record.normal) > 0.;
-      Vec3 wi = now_medium->sample_phasefn(now_ray.dir, rnd);
+      Vec3 wi = now_medium->sample_phasefn(wo, rnd);
 
       now_ray = Ray(scatter_point, wi);
       throughput = throughput * now_medium->sigma_s;
@@ -301,11 +301,11 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
 
       bool is_transmit = dot(wo, orienting_geom_normal) < 0.;
 
-      vertices.emplace_back(
-          HitpointInfo(record.hitpoint, throughput, pdf, record.id,
-                       orienting_normal, orienting_geom_normal, record.normal,
-                       record.uv, prim->bxdf->get_objtype(),
-                       prim->medium && is_transmit ? nullptr : now_medium));
+      vertices.emplace_back(HitpointInfo(
+          record.hitpoint, throughput, pdf, record.id, orienting_normal,
+          orienting_geom_normal, record.normal, record.uv,
+          prim->bxdf->get_objtype(),
+          prim->medium && is_transmit ? prim->medium : now_medium));
 
       now_ray = is_transmit
                     ? Ray(record.hitpoint - EPS * orienting_geom_normal, wo)
@@ -338,7 +338,7 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
                        orienting_normal, orienting_geom_normal, record.normal,
                        record.uv, ObjectType::MEDIUM, now_medium));
 
-      Vec3 wo = now_medium->sample_phasefn(now_ray.dir, rnd);
+      Vec3 wo = now_medium->sample_phasefn(wi, rnd);
       now_ray = Ray(scatter_point, wo);
       throughput = throughput * now_medium->sigma_s;
       pdf_sample_omega = 1.;
@@ -420,11 +420,11 @@ double calc_volpath_sampling_pdf(const std::vector<const HitpointInfo *> &path,
       return 0.;
     }
     pdf_omega = from_v->medium->eval_phasefn(
-        normalize(from_v->hitpoint - prev_from_v->hitpoint), normalized_to);
+        normalize(prev_from_v->hitpoint - from_v->hitpoint), normalized_to);
   } break;
   }
 
-  if (from_v->medium) {
+  if (from_v->medium && to_v->medium) {
     if (to_v->type == ObjectType::MEDIUM) {
       pdf_omega *= from_v->medium->pdf_sample_distance(to.len());
     } else {
@@ -610,9 +610,10 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         }
       } break;
       case ObjectType::MEDIUM: {
-        Vec3 w = normalize(eye_end->hitpoint - eye_path[en - 2].hitpoint);
+        Vec3 dir_prev =
+            normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
         throughput = throughput * eye_end->medium->sigma_s *
-                     eye_end->medium->eval_phasefn(w, -1. * test_dir);
+                     eye_end->medium->eval_phasefn(dir_prev, -1. * test_dir);
       } break;
       default:
         continue;
@@ -655,9 +656,10 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         }
       } break;
       case ObjectType::MEDIUM: {
-        Vec3 w = normalize(light_end->hitpoint - light_path[ln - 2].hitpoint);
+        Vec3 dir_prev =
+            normalize(light_path[ln - 2].hitpoint - light_end->hitpoint);
         throughput = throughput * light_end->medium->sigma_s *
-                     light_end->medium->eval_phasefn(w, test_dir);
+                     light_end->medium->eval_phasefn(dir_prev, test_dir);
       } break;
       default:
         continue;
@@ -667,6 +669,10 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         Medium *medium = eye_end->medium ? eye_end->medium : light_end->medium;
         throughput =
             throughput * medium->calc_transmittance(light_end_to_eye_end.len());
+      }
+
+      if (throughput.is_lezero()) {
+        continue;
       }
 
       double g_term = calc_g_term(

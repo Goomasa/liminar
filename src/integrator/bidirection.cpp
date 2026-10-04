@@ -516,6 +516,10 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         continue;
       }
 
+      if (throughput.is_lezero()) {
+        continue;
+      }
+
       double g_term = fabs(dot(test_dir, eye_end->geometry_normal) *
                            dot(test_dir, light_end->geometry_normal)) /
                       light_end_to_eye_end.len2();

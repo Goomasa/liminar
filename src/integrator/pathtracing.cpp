@@ -459,7 +459,7 @@ void Integrator::volpath_mis_integrate(Scene *scene, const Ray &ray,
               to_light.len2() /
               dot(to_light_norm, -1. * light->shape->get_normal(pos_on_light));
 
-          pdf_medium = now_medium->eval_phasefn(now_ray.dir, to_light_norm) *
+          pdf_medium = now_medium->eval_phasefn(wo, to_light_norm) *
                        now_medium->pdf_hit_to_end(test_record.distance);
 
           double mis_weight =
@@ -467,7 +467,7 @@ void Integrator::volpath_mis_integrate(Scene *scene, const Ray &ray,
 
           Color tmp_throughput =
               throughput * now_medium->sigma_s *
-              now_medium->eval_phasefn(now_ray.dir, to_light_norm) *
+              now_medium->eval_phasefn(wo, to_light_norm) *
               now_medium->calc_transmittance(test_record.distance);
 
           value = value + light->emission * (tmp_throughput * mis_weight /
@@ -475,10 +475,10 @@ void Integrator::volpath_mis_integrate(Scene *scene, const Ray &ray,
         }
       }
 
-      Vec3 wi = now_medium->sample_phasefn(now_ray.dir, rnd);
+      Vec3 wi = now_medium->sample_phasefn(wo, rnd);
       now_ray = Ray(scattering_point, wi);
       throughput = throughput * now_medium->sigma_s;
-      prev_pdf_material = now_medium->eval_phasefn(now_ray.dir, wi);
+      prev_pdf_material = now_medium->eval_phasefn(wo, wi);
       prev_is_specular = false;
     }
   }

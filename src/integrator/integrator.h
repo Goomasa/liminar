@@ -84,7 +84,7 @@ inline double correct_shading_normal(const Vec3 &wi, const Vec3 &wo,
                                      const Vec3 &shading_normal) {
   double numer = dot(wi, shading_normal) * dot(wo, geometry_normal);
   double denom = dot(wi, geometry_normal) * dot(wo, shading_normal);
-  return denom < EPS ? 0. : fabs(numer / denom);
+  return fabs(numer / denom);
 }
 
 struct HitpointInfo {
