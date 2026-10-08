@@ -23,11 +23,11 @@ inline double calc_g_term(const double len_sq, const Vec3 &dir_prev,
   return fabs(g_term);
 }
 
-std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
+std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
                                           const Ray &ray, const Point3 &px_pos,
                                           Color *final_value, Random *rnd) {
   // camera is not in medium
-  std::vector<HitpointInfo> vertices;
+  std::vector<BptVertexInfo> vertices;
   const IntegrateMode mode = IntegrateMode::PT;
 
   Ray now_ray = ray;
@@ -39,7 +39,7 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
        orienting_geom_normal = camera->sensor_dir,
        prev_orienting_geom_normal = orienting_geom_normal;
 
-  vertices.emplace_back(HitpointInfo(
+  vertices.emplace_back(BptVertexInfo(
       lens_hole_pos, throughput, pdf, -1, orienting_normal,
       orienting_geom_normal, orienting_normal, Vec2(), camera->get_objtype()));
 
@@ -112,7 +112,7 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
       Primitive *prim = &scene->primitives[record.id];
       if (prim->is_light()) {
         if (dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
-          vertices.emplace_back(HitpointInfo(
+          vertices.emplace_back(BptVertexInfo(
               record.hitpoint, throughput, pdf, record.id, orienting_normal,
               orienting_geom_normal, record.normal, record.uv,
               ObjectType::LIGHT, now_medium));
@@ -132,7 +132,7 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
 
       bool is_transmit = dot(wi, orienting_geom_normal) < 0.;
 
-      vertices.emplace_back(HitpointInfo(
+      vertices.emplace_back(BptVertexInfo(
           record.hitpoint, throughput, pdf, record.id, orienting_normal,
           orienting_geom_normal, record.normal, record.uv,
           prim->bxdf->get_objtype(),
@@ -162,7 +162,7 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
       Point3 scatter_point = now_ray.org + now_ray.dir * sampled_distance;
 
       vertices.emplace_back(
-          HitpointInfo(scatter_point, throughput, pdf, record.id,
+          BptVertexInfo(scatter_point, throughput, pdf, record.id,
                        orienting_normal, orienting_geom_normal, record.normal,
                        record.uv, ObjectType::MEDIUM, now_medium));
 
@@ -179,9 +179,9 @@ std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
   return vertices;
 }
 
-std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
+std::vector<BptVertexInfo> gen_light_volpath(Scene *scene, Camera *camera,
                                             PixelResult *result, Random *rnd) {
-  std::vector<HitpointInfo> vertices;
+  std::vector<BptVertexInfo> vertices;
   const IntegrateMode mode = IntegrateMode::LT;
 
   int32_t light_id = scene->sample_light_uniform(rnd);
@@ -202,7 +202,7 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
   // light is not in medium
   Medium *now_medium = nullptr;
 
-  vertices.emplace_back(HitpointInfo(light_pos, throughput, pdf, light_id,
+  vertices.emplace_back(BptVertexInfo(light_pos, throughput, pdf, light_id,
                                      light_normal, light_normal, light_normal,
                                      light_uv, ObjectType::LIGHT));
 
@@ -239,7 +239,7 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
       pdf *= pdf_sample_omega * dot(wi, camera->sensor_dir) /
              (lens_pos - now_ray.org).len2();
 
-      vertices.emplace_back(HitpointInfo(
+      vertices.emplace_back(BptVertexInfo(
           lens_pos, throughput, pdf, -1, camera->sensor_dir, camera->sensor_dir,
           camera->sensor_dir, Vec2(), ObjectType::LENS));
       *result = PixelResult(px_u, px_v, throughput / pdf, true);
@@ -301,7 +301,7 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
 
       bool is_transmit = dot(wo, orienting_geom_normal) < 0.;
 
-      vertices.emplace_back(HitpointInfo(
+      vertices.emplace_back(BptVertexInfo(
           record.hitpoint, throughput, pdf, record.id, orienting_normal,
           orienting_geom_normal, record.normal, record.uv,
           prim->bxdf->get_objtype(),
@@ -334,7 +334,7 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
       Point3 scatter_point = now_ray.org + now_ray.dir * sampled_distance;
 
       vertices.emplace_back(
-          HitpointInfo(scatter_point, throughput, pdf, record.id,
+          BptVertexInfo(scatter_point, throughput, pdf, record.id,
                        orienting_normal, orienting_geom_normal, record.normal,
                        record.uv, ObjectType::MEDIUM, now_medium));
 
@@ -349,13 +349,13 @@ std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
   return vertices;
 }
 
-double calc_volpath_sampling_pdf(const std::vector<const HitpointInfo *> &path,
+double calc_volpath_sampling_pdf(const std::vector<const BptVertexInfo *> &path,
                                  Camera *camera, Scene *scene,
                                  const uint32_t to_idx, const uint32_t from_idx,
                                  const uint32_t prev_from_idx,
                                  const IntegrateMode &mode) {
-  const HitpointInfo *to_v = path[to_idx], *from_v = path[from_idx];
-  const HitpointInfo *prev_from_v =
+  const BptVertexInfo *to_v = path[to_idx], *from_v = path[from_idx];
+  const BptVertexInfo *prev_from_v =
       prev_from_idx < path.size() ? path[prev_from_idx] : nullptr;
   double pdf_omega = 1.;
 
@@ -440,11 +440,11 @@ double calc_volpath_sampling_pdf(const std::vector<const HitpointInfo *> &path,
 }
 
 double calc_volpath_mis_weight(Scene *scene, Camera *camera,
-                               const std::vector<HitpointInfo> &eye_path,
-                               const std::vector<HitpointInfo> &light_path,
+                               const std::vector<BptVertexInfo> &eye_path,
+                               const std::vector<BptVertexInfo> &light_path,
                                const uint32_t en, const uint32_t ln) {
   uint32_t size = en + ln;
-  std::vector<const HitpointInfo *> path(size);
+  std::vector<const BptVertexInfo *> path(size);
   std::vector<double> pi1_pi(size);
 
   for (uint32_t i = 0; i < ln; i++) {
@@ -514,13 +514,13 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
   std::vector<PixelResult> bpt_results;
 
   Color eyepath_final_value;
-  std::vector<HitpointInfo> eye_path =
+  std::vector<BptVertexInfo> eye_path =
       gen_eye_volpath(scene, camera, ray, px_pos, &eyepath_final_value, rnd);
   PixelResult eyepath_result =
       PixelResult(px_u, px_v, eyepath_final_value, false);
 
   PixelResult lightpath_result;
-  std::vector<HitpointInfo> light_path =
+  std::vector<BptVertexInfo> light_path =
       gen_light_volpath(scene, camera, &lightpath_result, rnd);
 
   if (eyepath_result.value != INVALID_VEC) {
@@ -544,7 +544,7 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
   for (uint32_t en = 1; en <= eye_path.size(); en++) {
     for (uint32_t ln = 1; ln <= light_path.size(); ln++) {
       uint32_t final_px_u = px_u, final_px_v = px_v;
-      HitpointInfo *eye_end = &eye_path[en - 1],
+      BptVertexInfo *eye_end = &eye_path[en - 1],
                    *light_end = &light_path[ln - 1];
 
       if (eye_end->type == ObjectType::FULL_SPECUALR ||

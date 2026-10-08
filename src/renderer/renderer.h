@@ -35,9 +35,6 @@ public:
     case IntegrateMode::BPT: {
       bpt_render();
     } break;
-    case IntegrateMode::LT: {
-      lt_render();
-    } break;
     default: {
       pt_render();
     } break;
@@ -52,8 +49,6 @@ public:
 
 private:
   void pt_render() const;
-
-  void lt_render() const;
 
   void bpt_render() const;
 

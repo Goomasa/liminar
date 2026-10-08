@@ -87,7 +87,7 @@ inline double correct_shading_normal(const Vec3 &wi, const Vec3 &wo,
   return fabs(numer / denom);
 }
 
-struct HitpointInfo {
+struct BptVertexInfo {
   Point3 hitpoint;
   Color throughput;
   double pdf;
@@ -97,27 +97,32 @@ struct HitpointInfo {
   ObjectType type;
   Medium *medium;
 
-  HitpointInfo() : id(-1) {}
+  BptVertexInfo() : id(-1) {}
 
-  HitpointInfo(const Point3 &pos, const Color &thr, const double pdf,
-               const int32_t id, const Vec3 &normal, const Vec3 &geom_normal,
-               const Vec3 &obj_normal, const Vec2 &uv, const ObjectType &type,
-               Medium *medium = nullptr)
+  BptVertexInfo(const Point3 &pos, const Color &thr, const double pdf,
+                const int32_t id, const Vec3 &normal, const Vec3 &geom_normal,
+                const Vec3 &obj_normal, const Vec2 &uv, const ObjectType &type,
+                Medium *medium = nullptr)
       : hitpoint(pos), throughput(thr), pdf(pdf), id(id),
         orienting_normal(normal), geometry_normal(geom_normal),
         obj_normal(obj_normal), uv(uv), type(type), medium(medium) {}
 };
 
-std::vector<HitpointInfo> gen_eye_path(Scene *scene, Camera *camera,
-                                       const Ray &ray, const Point3 &px_pos,
-                                       Color *final_value, Random *rnd);
+struct VcmVertexInfo {
+  Point3 hitpoint;
+  Color throughput;
+  double pdf;
+  int32_t id;
+  Vec3 orienting_normal, geometry_normal, obj_normal;
+  Vec2 uv;
+  ObjectType type;
 
-std::vector<HitpointInfo> gen_light_path(Scene *scene, Camera *camera,
-                                         PixelResult *result, Random *rnd);
+  VcmVertexInfo() : id(-1) {}
 
-std::vector<HitpointInfo> gen_eye_volpath(Scene *scene, Camera *camera,
-                                          const Ray &ray, const Point3 &px_pos,
-                                          Color *final_value, Random *rnd);
-
-std::vector<HitpointInfo> gen_light_volpath(Scene *scene, Camera *camera,
-                                            PixelResult *result, Random *rnd);
+  VcmVertexInfo(const Point3 &pos, const Color &thr, const double pdf,
+                const int32_t id, const Vec3 &normal, const Vec3 &geom_normal,
+                const Vec3 &obj_normal, const Vec2 &uv, const ObjectType &type)
+      : hitpoint(pos), throughput(thr), pdf(pdf), id(id),
+        orienting_normal(normal), geometry_normal(geom_normal),
+        obj_normal(obj_normal), uv(uv), type(type) {}
+};
