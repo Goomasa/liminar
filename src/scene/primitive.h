@@ -5,6 +5,7 @@
 #include "renderer/ray.h"
 #include "scene/aabb.h"
 #include "util/utils.h"
+#include <cmath>
 #include <cstdint>
 
 struct Vertex {
@@ -132,8 +133,14 @@ public:
   Point3 get_center() const override { return center; }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override {
-    // do not use
-    return 1.;
+    double phi = 2. * PI * rnd->gen();
+    double cos_theta = -2. * rnd->gen() + 1.;
+    double sin_theta = sqrt(1. - cos_theta * cos_theta);
+    Vec3 d =
+        normalize(Vec3(sin_theta * cos(phi), sin_theta * sin(phi), cos_theta));
+
+    *pdf = 1. / area;
+    return center + d;
   }
 
   Vec3 get_normal(const Point3 &pos) const override {
@@ -169,8 +176,21 @@ public:
   Point3 get_center() const override { return bottom + dir * height * 0.5; }
 
   Point3 sample_surface(Random *rnd, double *pdf) const override {
-    // do not use
-    return 1.;
+    *pdf = 1. / area;
+
+    Vec3 u, v;
+    if (fabs(dir.x) > EPS) {
+      u = normalize(cross(Vec3(0, 1, 0), dir));
+    } else {
+      u = normalize(cross(Vec3(1, 0, 0), dir));
+    }
+    v = cross(dir, u);
+
+    double phi = 2. * rnd->gen() * PI;
+    double h = height * rnd->gen();
+    Vec3 d = radius * normalize(u * cos(phi) + v * sin(phi));
+
+    return bottom + d + h * dir;
   }
 
   Vec3 get_normal(const Point3 &pos) const override {

@@ -292,8 +292,8 @@ void Integrator::mis_integrate(Scene *scene, const Ray &ray, Random *rnd) {
   }
 }
 
-void Integrator::volpath_mis_integrate(Scene *scene, const Ray &ray,
-                                       Random *rnd) {
+void Integrator::volpt_mis_integrate(Scene *scene, const Ray &ray,
+                                     Random *rnd) {
   const IntegrateMode mode = IntegrateMode::PT;
   Ray now_ray = ray, test_ray = Ray(Point3(), Vec3());
   HitRecord record = HitRecord(), test_record = HitRecord();

@@ -16,6 +16,7 @@ public:
   std::unique_ptr<Camera> camera;
   uint32_t supersamples, samples_per_spx, threads_num;
   IntegrateMode mode = IntegrateMode::PT;
+  bool has_medium = false;
 
   Renderer(const std::string &filename = "settings/test-setting.json") {
     ObjectNode node = load_json(filename);
@@ -33,10 +34,10 @@ public:
       test_render();
     } break;
     case IntegrateMode::BPT: {
-      bpt_render();
+      has_medium ? volbpt_render() : bpt_render();
     } break;
     default: {
-      pt_render();
+      has_medium ? volpt_render() : pt_render();
     } break;
     }
 
@@ -49,15 +50,13 @@ public:
 
 private:
   void pt_render() const;
-
+  void volpt_render() const;
   void bpt_render() const;
-
+  void volbpt_render() const;
   void test_render() const;
 
   void set_scene(ObjectNode &node);
-
   void set_camera(ObjectNode &node);
-
   void set_renderer(ObjectNode &node);
 };
 
