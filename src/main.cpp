@@ -1,3 +1,3 @@
 #include "renderer/renderer.h"
 
-int main() { Renderer renderer = Renderer("settings/test-setting.json"); }
+int main() { Renderer renderer = Renderer("settings/fromage.json"); }

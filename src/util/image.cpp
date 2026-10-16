@@ -21,11 +21,11 @@ std::optional<std::vector<TexColor3f>>
 load_image(const std::string &filename, uint32_t *width, uint32_t *height) {
   std::filesystem::path project_dir = ".";
   std::filesystem::path tmp_path = filename;
-  std::string filepath = tmp_path.filename();
+  std::string filepath = tmp_path.filename().string();
   for (const auto &entry :
        std::filesystem::recursive_directory_iterator(project_dir)) {
     if (entry.is_regular_file() && entry.path().filename() == filepath) {
-      filepath = entry.path().string<char>();
+      filepath = entry.path().string();
       break;
     }
   }
@@ -91,10 +91,9 @@ void load_image(const std::string &filename,
   }
 }
 
-std::optional<std::vector<TexColor3f>> load_image(const uint8_t *buffer,
-                                                  const size_t size,
-                                                  uint32_t *width,
-                                                  uint32_t *height) {
+std::optional<std::vector<TexColor3f>>
+load_image(const uint8_t *buffer, const size_t size, uint32_t *width,
+           uint32_t *height, const bool correct) {
   int w_, h_, channels;
   unsigned char *data =
       stbi_load_from_memory(buffer, size, &w_, &h_, &channels, RGB_CH);
@@ -109,9 +108,16 @@ std::optional<std::vector<TexColor3f>> load_image(const uint8_t *buffer,
   std::vector<TexColor3f> pixels(data_size);
 
   for (uint64_t i = 0; i < data_size; i++) {
-    pixels[i] = gamma_inv(TexColor3f(static_cast<float>(data[3 * i]),
-                                     static_cast<float>(data[3 * i + 1]),
-                                     static_cast<float>(data[3 * i + 2])));
+    if (correct) {
+      pixels[i] = gamma_inv(TexColor3f(static_cast<float>(data[3 * i]),
+                                       static_cast<float>(data[3 * i + 1]),
+                                       static_cast<float>(data[3 * i + 2])));
+    } else {
+      pixels[i] = TexColor3f(static_cast<float>(data[3 * i]),
+                             static_cast<float>(data[3 * i + 1]),
+                             static_cast<float>(data[3 * i + 2])) *
+                  UINT8_INV;
+    }
   }
 
   stbi_image_free(data);

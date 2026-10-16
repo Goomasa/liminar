@@ -49,9 +49,8 @@ load_image(const std::string &filename, uint32_t *width, uint32_t *height);
 
 void load_image(const std::string &filename, std::unique_ptr<Texture> *texture);
 
-std::optional<std::vector<TexColor3f>> load_image(const uint8_t *buffer,
-                                                  const size_t size,
-                                                  uint32_t *width,
-                                                  uint32_t *height);
+std::optional<std::vector<TexColor3f>>
+load_image(const uint8_t *buffer, const size_t size, uint32_t *width,
+           uint32_t *height, const bool correct);
 
 void test_load_image(const std::string &filename);

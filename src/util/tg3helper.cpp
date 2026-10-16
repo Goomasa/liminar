@@ -6,7 +6,33 @@
 #include "util/utils.h"
 #include <cstdint>
 #include <memory>
-#include <vector>
+
+bool load_gltf_data(const tg3_model &tg_model, const tg3_primitive &tg_prim,
+                    tg3_accessor *accessor, const uint8_t *&data,
+                    uint32_t *stride, const std::string &semantic,
+                    const int32_t accessor_type) {
+  int32_t accessor_idx = find_attrib_accessor(tg_prim, semantic);
+  if (accessor_idx == TG3_INDEX_NONE) {
+    return false;
+  }
+
+  *accessor = tg_model.accessors[accessor_idx];
+  if (accessor->component_type != TG3_COMPONENT_TYPE_FLOAT ||
+      accessor->type != accessor_type) {
+    return false;
+  }
+
+  data = accessor_data(tg_model, *accessor);
+  if (!data) {
+    return false;
+  }
+
+  const tg3_buffer_view &tg_position_view =
+      tg_model.buffer_views[accessor->buffer_view];
+  *stride = tg_position_view.byte_stride != 0 ? tg_position_view.byte_stride
+                                              : *stride;
+  return true;
+}
 
 inline double get_gltf_specular(const tg3_material &tg_mat) {
   const std::string KHR_EXT_NAME = "KHR_materials_specular";
@@ -105,7 +131,7 @@ inline void get_texcoord_sampler(const tg3_model &tg_model,
 }
 
 void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
-                       std::unique_ptr<Texture> *texture) {
+                       std::unique_ptr<Texture> *texture, const bool correct) {
   if (tex_idx < 0 || tex_idx >= tg_model.textures_count) {
     return;
   }
@@ -119,49 +145,30 @@ void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
   const tg3_image &tg_image = tg_model.images[tg_texture.source];
   uint32_t width = tg_image.width, height = tg_image.height;
   int32_t channels = tg_image.component > 0 ? tg_image.component : 4;
-  const unsigned char *data = tg_image.image.data;
 
   TexcoordSampler sampler_u, sampler_v;
   get_texcoord_sampler(tg_model, tg_texture, &sampler_u, &sampler_v);
 
-  if (data) {
-    std::vector<TexColor3f> pixels(width * height);
+  int32_t tex_buffer_view_idx = tg_image.buffer_view;
+  if (tex_buffer_view_idx == TG3_INDEX_NONE) {
+    return;
+  }
 
-    for (uint32_t h = 0; h < height; h++) {
-      for (uint32_t w = 0; w < width; w++) {
-        uint64_t idx = (h * width + w) * channels;
-        float r = static_cast<float>(tg_image.image.data[idx]);
-        float g = static_cast<float>(tg_image.image.data[idx + 1]);
-        float b = static_cast<float>(tg_image.image.data[idx + 2]);
+  const tg3_buffer_view &tex_buffer_view =
+      tg_model.buffer_views[tex_buffer_view_idx];
+  const tg3_buffer &tg_buffer = tg_model.buffers[tex_buffer_view.buffer];
 
-        pixels[h * width + w] = gamma_inv(TexColor3f(r, g, b));
-      }
-    }
+  const uint8_t *data = nullptr;
+  size_t size = 0;
 
-    *texture = std::move(std::make_unique<ImageTexture>(pixels, width, height,
-                                                        sampler_u, sampler_v));
-  } else {
-    int32_t tex_buffer_view_idx = tg_image.buffer_view;
-    if (tex_buffer_view_idx == TG3_INDEX_NONE) {
-      return;
-    }
+  if (!get_image_buffer_data(tex_buffer_view, tg_buffer, data, size)) {
+    return;
+  }
 
-    const tg3_buffer_view &tex_buffer_view =
-        tg_model.buffer_views[tex_buffer_view_idx];
-    const tg3_buffer &tg_buffer = tg_model.buffers[tex_buffer_view.buffer];
-
-    const uint8_t *data = nullptr;
-    size_t size = 0;
-
-    if (!get_image_buffer_data(tex_buffer_view, tg_buffer, data, size)) {
-      return;
-    }
-
-    auto pixels = load_image(data, size, &width, &height);
-    if (pixels.has_value()) {
-      *texture = std::move(std::make_unique<ImageTexture>(
-          pixels.value(), width, height, sampler_u, sampler_v));
-    }
+  auto pixels = load_image(data, size, &width, &height, correct);
+  if (pixels.has_value()) {
+    *texture = std::move(std::make_unique<ImageTexture>(
+        pixels.value(), width, height, sampler_u, sampler_v));
   }
 }
 
@@ -220,7 +227,8 @@ void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
   double metallic = tg_pbr_info.metallic_factor;
   double ior;
 
-  load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, color_tex);
+  load_gltf_texture(tg_model, tg_pbr_info.base_color_texture.index, color_tex,
+                    true);
   Texture *color_texture_ptr = *color_tex ? color_tex->get() : nullptr;
 
   if (is_transparent(tg_material, &ior)) {
@@ -324,4 +332,16 @@ Mat4 get_normal_transform_mat(const Mat4 &m) {
   inv.e[2][2] = (a * e - b * d) * inv_det;
 
   return inv.transpose();
+}
+
+void load_gltf_normal_map(const tg3_model &tg_model,
+                          const tg3_primitive &tg_prim,
+                          std::unique_ptr<Texture> *normal_map) {
+  if (tg_prim.material < 0 || tg_prim.material >= tg_model.materials_count) {
+    return;
+  }
+
+  const tg3_material &tg_material = tg_model.materials[tg_prim.material];
+  load_gltf_texture(tg_model, tg_material.normal_texture.index, normal_map,
+                    false);
 }

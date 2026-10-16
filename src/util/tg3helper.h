@@ -63,33 +63,10 @@ static uint32_t read_tg_index(const uint8_t *data, uint64_t index,
 Color load_gltf_emission(const tg3_model &tg_model,
                          const tg3_primitive &tg_prim);
 
-inline bool load_gltf_data(const tg3_model &tg_model,
-                           const tg3_primitive &tg_prim, tg3_accessor *accessor,
-                           const uint8_t *&data, uint32_t *stride,
-                           const std::string &semantic,
-                           const int32_t accessor_type) {
-  int32_t accessor_idx = find_attrib_accessor(tg_prim, semantic);
-  if (accessor_idx == TG3_INDEX_NONE) {
-    return false;
-  }
-
-  *accessor = tg_model.accessors[accessor_idx];
-  if (accessor->component_type != TG3_COMPONENT_TYPE_FLOAT ||
-      accessor->type != accessor_type) {
-    return false;
-  }
-
-  data = accessor_data(tg_model, *accessor);
-  if (!data) {
-    return false;
-  }
-
-  const tg3_buffer_view &tg_position_view =
-      tg_model.buffer_views[accessor->buffer_view];
-  *stride = tg_position_view.byte_stride != 0 ? tg_position_view.byte_stride
-                                              : *stride;
-  return true;
-}
+bool load_gltf_data(const tg3_model &tg_model, const tg3_primitive &tg_prim,
+                    tg3_accessor *accessor, const uint8_t *&data,
+                    uint32_t *stride, const std::string &semantic,
+                    const int32_t accessor_type);
 
 void load_gltf_material(const tg3_model &tg_model, const tg3_primitive &tg_prim,
                         std::unique_ptr<Bxdf> *bxdf, Color *emission,
@@ -103,3 +80,7 @@ Mat4 get_normal_transform_mat(const Mat4 &m);
 
 void load_gltf_texture(const tg3_model &tg_model, const int32_t tex_idx,
                        std::unique_ptr<Texture> *tex);
+
+void load_gltf_normal_map(const tg3_model &tg_model,
+                          const tg3_primitive &tg_prim,
+                          std::unique_ptr<Texture> *normal_map);
