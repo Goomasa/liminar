@@ -135,11 +135,10 @@ private:
   inline Vec3 get_normal_from_uv(const Vec2 &geom_uv,
                                  const Vec2 &texcoord) const {
     if (normal_map) {
-      Vec3 w = normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, texcoord));
-      Vec3 u =
-          normalize(tlerp<Vec3>(p.tangent, q.tangent, r.tangent, texcoord));
+      Vec3 w = normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, geom_uv));
+      Vec3 u = normalize(tlerp<Vec3>(p.tangent, q.tangent, r.tangent, geom_uv));
       Vec3 v = normalize(
-          tlerp<Vec3>(p.bitangent, q.bitangent, r.bitangent, texcoord));
+          tlerp<Vec3>(p.bitangent, q.bitangent, r.bitangent, geom_uv));
       Vec3 map_col = normal_map->get_color(texcoord) * 2. - 1.;
 
       return normalize(u * map_col.x + v * map_col.y + w * map_col.z);

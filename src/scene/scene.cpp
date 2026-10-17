@@ -210,6 +210,16 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
 
 /* --- gltf --- */
 
+inline void calc_tangent(const Vertex &v0, const Vertex &v1, const Vertex &v2,
+                         Vec3 *tangent, Vec3 *bitangent) {
+  Vec3 dp1 = v1.position - v0.position, dp2 = v2.position - v0.position;
+  double duv1_u = v1.uv.u - v0.uv.u, duv2_u = v2.uv.u - v0.uv.u;
+  double duv1_v = v1.uv.v - v0.uv.v, duv2_v = v2.uv.v - v0.uv.v;
+
+  *tangent = normalize(dp1 * duv2_v - dp2 * duv1_v);
+  *bitangent = normalize(dp2 * duv1_u - dp1 * duv2_u);
+}
+
 void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                       const double scale, const Vec3 &tr) {
   tg3_parse_options tg_options;
@@ -460,10 +470,20 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
       load_gltf_normal_map(tg_model, tg_prim, &normal_map);
 
       for (uint32_t tidx = 0; tidx < triangle_verts.size() / 3; tidx++) {
+        if (!has_tangent) {
+          Vec3 tangent, bitangent;
+          calc_tangent(triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
+                       triangle_verts[tidx * 3 + 2], &tangent, &bitangent);
+
+          for (uint8_t vi = 0; vi < 3; vi++) {
+            triangle_verts[tidx * 3 + vi].tangent = tangent;
+            triangle_verts[tidx * 3 + vi].bitangent = bitangent;
+          }
+        }
+
         std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
             triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
-            triangle_verts[tidx * 3 + 2],
-            has_tangent ? normal_map.get() : nullptr);
+            triangle_verts[tidx * 3 + 2], normal_map.get());
 
         Primitive prim =
             Primitive(shape.get(), bxdf.get(), emission, primitives.size());

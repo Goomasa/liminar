@@ -18,6 +18,7 @@ constexpr double LOBBY_WALL_TEX_LEN = 4;
 constexpr double LOBBY_CEILING_TEX_LEN = 40;
 
 void Scene::model_lobby() {
+  // Random rnd(5);
   Random rnd(0);
   Point3 floor_minp(LOBBY_TOTAL_WIDTH * -0.5, 0, LOBBY_TOTAL_WIDTH * -0.5);
   Point3 floor_maxp =

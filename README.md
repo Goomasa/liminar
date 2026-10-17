@@ -3,6 +3,8 @@
 
 <img src="images/lobby1.jpg"/>
 
+<img src="images/poolroom1.jpg"/>
+
 ## Features
 
 - Unidirectional pathtracing with MIS
@@ -35,13 +37,13 @@ cmake --build build --config Release
 ```
 
 ## Gallery
-<img src="images/cornell-sphere.jpg" width=60% height=60%/>
+<img src="images/cornell-sphere.jpg" width=70% height=70%/>
 
-<img src="images/lobby2.jpg" width=60% height=60%/>
+<img src="images/lobby2.jpg" width=70% height=70%/>
 
-<img src="images/poolroom1.jpg" width=60% height=60%/>
+<img src="images/poolroom2.jpg" width=70% height=70%/>
 
-<img src="images/fromage.jpg" width=60% height=60%/>
+<img src="images/fromage.jpg" width=70% height=70%/>
     
 > Model: [Cannelle & Fromage](https://github.com/LuxCoreRender/LuxCoreTestScenes) by Charles Nandeya Ehouman (Sharlybg)
 
