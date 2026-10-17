@@ -30,10 +30,9 @@ bool Triangle::hit(Ray &ray, HitRecord *record) const {
 
   record->distance = t;
   record->hitpoint = pos;
-  record->normal = normalize(
-      tlerp<Vec3>(p.normal, q.normal, r.normal, Vec2(geom_u, geom_v)));
   record->geometry_normal = geometry_normal;
   record->uv = tlerp<Vec2>(p.uv, q.uv, r.uv, Vec2(geom_u, geom_v));
+  record->normal = get_normal_from_uv(Vec2(geom_u, geom_v), record->uv);
 
   return true;
 }

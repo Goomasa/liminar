@@ -66,7 +66,7 @@ std::vector<BptVertexInfo> gen_eye_path(Scene *scene, Camera *camera,
 
     Primitive *prim = &scene->primitives[record.id];
     if (prim->is_light()) {
-      if (dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
+      if (dot(now_ray.dir, record.normal) < 0.) {
         vertices.emplace_back(
             BptVertexInfo(record.hitpoint, throughput, pdf, record.id,
                           orienting_normal, orienting_geom_normal,

@@ -292,8 +292,6 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
       Mat4 transform_mat = get_transform_mat(tg_model, node_i);
       Mat4 normal_transform_mat = get_normal_transform_mat(transform_mat);
       std::vector<Vertex> triangle_verts;
-      std::vector<Vec3> tangents;
-      std::vector<Vec3> bitangents;
       // no indices
       if (tg_prim.indices == TG3_INDEX_NONE) {
         for (uint64_t i = 0; i + 2 < tg_positions.count; i += 3) {
@@ -342,9 +340,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                 has_tangent ? normalize(tmp_tangent[3] * cross(normal, tangent))
                             : normalize(cross(normal, tangent));
 
-            triangle_verts.emplace_back(Vertex(vec, normal, uv));
-            tangents.emplace_back(tangent);
-            bitangents.emplace_back(bitangent);
+            triangle_verts.emplace_back(
+                Vertex(vec, normal, tangent, bitangent, uv));
           }
         }
       } else {
@@ -441,9 +438,8 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
                 has_tangent ? normalize(tmp_tangent[3] * cross(normal, tangent))
                             : normalize(cross(normal, tangent));
 
-            triangle_verts.emplace_back(Vertex(vec, normal, uv));
-            tangents.emplace_back(tangent);
-            bitangents.emplace_back(bitangent);
+            triangle_verts.emplace_back(
+                Vertex(vec, normal, tangent, bitangent, uv));
           }
         }
       }
@@ -464,21 +460,10 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
       load_gltf_normal_map(tg_model, tg_prim, &normal_map);
 
       for (uint32_t tidx = 0; tidx < triangle_verts.size() / 3; tidx++) {
-        if (has_tangent && normal_map) {
-          for (uint8_t vi = 0; vi < 3; vi++) {
-            Vertex *vert = &triangle_verts[tidx * 3 + vi];
-            Vec3 tangent = tangents[tidx * 3 + vi];
-            Vec3 bitangent = bitangents[tidx * 3 + vi];
-            Vec3 map_col = normal_map->get_color(vert->uv) * 2. - 1;
-            vert->normal =
-                normalize(tangent * map_col.x + bitangent * map_col.y +
-                          vert->normal * map_col.z);
-          }
-        }
-
         std::unique_ptr<Shape> shape = std::make_unique<Triangle>(
             triangle_verts[tidx * 3], triangle_verts[tidx * 3 + 1],
-            triangle_verts[tidx * 3 + 2]);
+            triangle_verts[tidx * 3 + 2],
+            has_tangent ? normal_map.get() : nullptr);
 
         Primitive prim =
             Primitive(shape.get(), bxdf.get(), emission, primitives.size());
@@ -487,6 +472,10 @@ void Scene::load_gltf(const std::string &filename, const std::string &dir_path,
       }
 
       bxdfs.emplace_back(std::move(bxdf));
+
+      if (normal_map) {
+        textures.emplace_back(std::move(normal_map));
+      }
     }
   }
 

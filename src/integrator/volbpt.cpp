@@ -24,8 +24,8 @@ inline double calc_g_term(const double len_sq, const Vec3 &dir_prev,
 }
 
 std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
-                                          const Ray &ray, const Point3 &px_pos,
-                                          Color *final_value, Random *rnd) {
+                                           const Ray &ray, const Point3 &px_pos,
+                                           Color *final_value, Random *rnd) {
   // camera is not in medium
   std::vector<BptVertexInfo> vertices;
   const IntegrateMode mode = IntegrateMode::PT;
@@ -111,7 +111,7 @@ std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
 
       Primitive *prim = &scene->primitives[record.id];
       if (prim->is_light()) {
-        if (dot(now_ray.dir, prim->shape->get_normal(record.hitpoint)) < 0.) {
+        if (dot(now_ray.dir, record.normal) < 0.) {
           vertices.emplace_back(BptVertexInfo(
               record.hitpoint, throughput, pdf, record.id, orienting_normal,
               orienting_geom_normal, record.normal, record.uv,
@@ -163,8 +163,8 @@ std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
 
       vertices.emplace_back(
           BptVertexInfo(scatter_point, throughput, pdf, record.id,
-                       orienting_normal, orienting_geom_normal, record.normal,
-                       record.uv, ObjectType::MEDIUM, now_medium));
+                        orienting_normal, orienting_geom_normal, record.normal,
+                        record.uv, ObjectType::MEDIUM, now_medium));
 
       bool into = dot(orienting_normal, record.normal) > 0.;
       Vec3 wi = now_medium->sample_phasefn(wo, rnd);
@@ -180,7 +180,7 @@ std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
 }
 
 std::vector<BptVertexInfo> gen_light_volpath(Scene *scene, Camera *camera,
-                                            PixelResult *result, Random *rnd) {
+                                             PixelResult *result, Random *rnd) {
   std::vector<BptVertexInfo> vertices;
   const IntegrateMode mode = IntegrateMode::LT;
 
@@ -203,8 +203,8 @@ std::vector<BptVertexInfo> gen_light_volpath(Scene *scene, Camera *camera,
   Medium *now_medium = nullptr;
 
   vertices.emplace_back(BptVertexInfo(light_pos, throughput, pdf, light_id,
-                                     light_normal, light_normal, light_normal,
-                                     light_uv, ObjectType::LIGHT));
+                                      light_normal, light_normal, light_normal,
+                                      light_uv, ObjectType::LIGHT));
 
   Vec3 dir = Bxdf::sample_cosine_hemisphere(light_normal, rnd);
   double pdf_sample_omega = fabs(dot(light_normal, dir)) * PI_INV;
@@ -335,8 +335,8 @@ std::vector<BptVertexInfo> gen_light_volpath(Scene *scene, Camera *camera,
 
       vertices.emplace_back(
           BptVertexInfo(scatter_point, throughput, pdf, record.id,
-                       orienting_normal, orienting_geom_normal, record.normal,
-                       record.uv, ObjectType::MEDIUM, now_medium));
+                        orienting_normal, orienting_geom_normal, record.normal,
+                        record.uv, ObjectType::MEDIUM, now_medium));
 
       Vec3 wo = now_medium->sample_phasefn(wi, rnd);
       now_ray = Ray(scatter_point, wo);
@@ -545,7 +545,7 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
     for (uint32_t ln = 1; ln <= light_path.size(); ln++) {
       uint32_t final_px_u = px_u, final_px_v = px_v;
       BptVertexInfo *eye_end = &eye_path[en - 1],
-                   *light_end = &light_path[ln - 1];
+                    *light_end = &light_path[ln - 1];
 
       if (eye_end->type == ObjectType::FULL_SPECUALR ||
           eye_end->type == ObjectType::LIGHT ||

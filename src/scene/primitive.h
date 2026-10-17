@@ -4,22 +4,36 @@
 #include "renderer/medium.h"
 #include "renderer/ray.h"
 #include "scene/aabb.h"
+#include "scene/texture.h"
 #include "util/utils.h"
 #include <cmath>
 #include <cstdint>
 
 struct Vertex {
   Point3 position;
-  Vec3 normal;
+  Vec3 normal, tangent, bitangent;
   Vec2 uv;
 
-  Vertex() : position(Point3()), normal(Vec3(1, 0, 0)) {}
+  Vertex()
+      : position(Point3()), normal(Vec3(1, 0, 0)), tangent(Vec3(0, 1, 0)),
+        bitangent(Vec3(0, 0, 1)) {}
 
   Vertex(const Point3 &pos, const Vec3 &normal)
-      : position(pos), normal(normalize(normal)), uv(0.5) {}
+      : position(pos), normal(normalize(normal)), uv(0.5) {
+    tangent = Vec3(0, 1, 0);
+    bitangent = cross(normal, tangent);
+  }
 
   Vertex(const Point3 &pos, const Vec3 &normal, const Vec2 &uv)
-      : position(pos), normal(normal), uv(uv) {}
+      : position(pos), normal(normal), uv(uv) {
+    tangent = Vec3(0, 1, 0);
+    bitangent = cross(normal, tangent);
+  }
+
+  Vertex(const Point3 &pos, const Vec3 &normal, const Vec3 &tangent,
+         const Vec3 &bitangent, const Vec2 &uv)
+      : position(pos), normal(normal), tangent(tangent), bitangent(bitangent),
+        uv(uv) {}
 };
 
 class Shape {
@@ -41,8 +55,11 @@ class Triangle : public Shape {
 public:
   Vertex p, q, r;
   Vec3 geometry_normal;
+  Texture *normal_map;
 
-  Triangle(const Vec3 &vp, const Vec3 &vq, const Vec3 &vr) {
+  Triangle(const Vec3 &vp, const Vec3 &vq, const Vec3 &vr,
+           Texture *map = nullptr)
+      : normal_map(map) {
     geometry_normal = normalize(cross(vq - vp, vr - vp));
     p = Vertex(vp, geometry_normal);
     q = Vertex(vq, geometry_normal);
@@ -51,8 +68,9 @@ public:
     area = 0.5 * cross(vq - vp, vr - vp).len();
   }
 
-  Triangle(const Vertex &vp, const Vertex &vq, const Vertex &vr)
-      : p(vp), q(vq), r(vr) {
+  Triangle(const Vertex &vp, const Vertex &vq, const Vertex &vr,
+           Texture *map = nullptr)
+      : p(vp), q(vq), r(vr), normal_map(map) {
     Vec3 pq = vq.position - vp.position;
     Vec3 pr = vr.position - vp.position;
     geometry_normal = normalize(cross(pq, pr));
@@ -61,6 +79,7 @@ public:
       p.normal = geometry_normal;
       q.normal = geometry_normal;
       r.normal = geometry_normal;
+      normal_map = nullptr;
     }
 
     area = 0.5 * cross(pq, pr).len();
@@ -97,7 +116,6 @@ public:
   }
 
   Vec2 get_texcoord(const Point3 &pos) const override {
-    // todo: normal map
     Vec2 geom_uv = get_geometry_uv(pos);
     return tlerp<Vec2>(p.uv, q.uv, r.uv, geom_uv);
   }
@@ -112,6 +130,22 @@ private:
   template <typename T>
   inline T tlerp(const T pv, const T qv, const T rv, const Vec2 &uv) const {
     return (1 - uv.u - uv.v) * pv + uv.u * qv + uv.v * rv;
+  }
+
+  inline Vec3 get_normal_from_uv(const Vec2 &geom_uv,
+                                 const Vec2 &texcoord) const {
+    if (normal_map) {
+      Vec3 w = normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, texcoord));
+      Vec3 u =
+          normalize(tlerp<Vec3>(p.tangent, q.tangent, r.tangent, texcoord));
+      Vec3 v = normalize(
+          tlerp<Vec3>(p.bitangent, q.bitangent, r.bitangent, texcoord));
+      Vec3 map_col = normal_map->get_color(texcoord) * 2. - 1.;
+
+      return normalize(u * map_col.x + v * map_col.y + w * map_col.z);
+    } else {
+      return normalize(tlerp<Vec3>(p.normal, q.normal, r.normal, geom_uv));
+    }
   }
 };
 
