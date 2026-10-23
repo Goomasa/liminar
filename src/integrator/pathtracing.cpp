@@ -59,6 +59,11 @@ void Integrator::pt_integrate(Scene *scene, const Ray &ray, Random *rnd) {
                  prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
                                   orienting_geom_normal, into, mode) *
                  fabs(dot(wi, orienting_normal));
+
+    if (throughput.is_lezero()) {
+      break;
+    }
+
     pdf *= prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
   }
 }
@@ -281,6 +286,11 @@ void Integrator::mis_integrate(Scene *scene, const Ray &ray, Random *rnd) {
                  prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
                                   orienting_geom_normal, into, mode) *
                  fabs(dot(wi, orienting_normal));
+
+    if (throughput.is_lezero()) {
+      break;
+    }
+
     prev_pdf_bxdf =
         prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
     pdf *= prev_pdf_bxdf;
@@ -417,6 +427,11 @@ void Integrator::volpt_mis_integrate(Scene *scene, const Ray &ray,
                    prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
                                     orienting_geom_normal, into, mode) *
                    fabs(dot(wi, orienting_normal));
+
+      if (throughput.is_lezero()) {
+        break;
+      }
+
       prev_pdf_material =
           prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
       pdf *= prev_pdf_material;
@@ -469,6 +484,11 @@ void Integrator::volpt_mis_integrate(Scene *scene, const Ray &ray,
       Vec3 wi = now_medium->sample_phasefn(wo, rnd);
       now_ray = Ray(scattering_point, wi);
       throughput = throughput * now_medium->sigma_s;
+
+      if (throughput.is_lezero()) {
+        break;
+      }
+
       prev_pdf_material = now_medium->eval_phasefn(wo, wi);
       prev_is_specular = false;
     }

@@ -14,6 +14,7 @@
   + Microfacet BRDF/BTDF (GGX)
   + Mixture BRDF (UE4-like)
 - Camera: pinhole, thin lens
+- Homogeneous medium & Herowavelength sampling
 
 ## Dependencies
 - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader.git)
@@ -41,8 +42,6 @@ cmake --build build --config Release
 
 <img src="images/lobby2.jpg" width=70% height=70%/>
 
-<img src="images/poolroom2.jpg" width=70% height=70%/>
-
 <img src="images/fromage.jpg" width=70% height=70%/>
     
 > Model: [Cannelle & Fromage](https://github.com/LuxCoreRender/LuxCoreTestScenes) by Charles Nandeya Ehouman (Sharlybg)
@@ -53,4 +52,7 @@ cmake --build build --config Release
 - githole "edubpt" https://github.com/githole/edubpt
 - Dupuy, Jonathan, and Anis Benyoub. "Sampling visible GGX normals with spherical caps." Computer Graphics Forum. Vol. 42. No. 8. 2023.
 - Karis, Brian, and Epic Games. "Real shading in unreal engine 4." Proc. Physically Based Shading Theory Practice 4.3 (2013): 1.
+- https://blog.teastat.uk/post/2021/12/montecarlo-raytracing-of-homogeneous-medium/
 - https://rayspace.xyz/CG/
+- Matt Pharr, Wenzel Jakob, and Greg Humphreys. Physically Based Rendering: From Theory To Implementation. 
+https://pbr-book.org/4ed/contents

@@ -329,7 +329,7 @@ Color MixtureBrdf::eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv,
 
   if (check_light_leak(wi, wo, normal, geometry_normal) &&
       check_block_surface(wi, wo, geometry_normal)) {
-    return (1. - metallic) * (Vec3(1.) - fresnel) * f_diff + f_spec;
+    return (1. - metallic) * f_diff + f_spec;
   } else {
     return 0.;
   }
