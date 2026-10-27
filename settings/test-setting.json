@@ -41,6 +41,6 @@
     "samples-per-superpixel":4,
     "threads-num":10,
     "integrator":"pt",
-    "medium":false
+    "medium":true
   }
 }

@@ -40,6 +40,8 @@ cmake --build build --config Release
 ## Gallery
 <img src="images/cornell-sphere.jpg" width=70% height=70%/>
 
+<img src="images/cornell-medium.jpg" width=70% height=70%/>
+
 <img src="images/lobby2.jpg" width=70% height=70%/>
 
 <img src="images/fromage.jpg" width=70% height=70%/>

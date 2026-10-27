@@ -403,7 +403,11 @@ void Integrator::volpt_mis_integrate(Scene *scene, const Ray &ray,
                              pdf_sample_surface_area * to_light.len2() /
                              dot(to_light_norm, -1. * test_record.normal);
 
-          double mis_weight = pdf_sample_light / (pdf_sample_light + pdf_bxdf);
+          double pdf_hit_to_end =
+              now_medium ? now_medium->pdf_hit_to_end(to_light.len()) : 1.;
+
+          double mis_weight =
+              pdf_sample_light / (pdf_sample_light + pdf_bxdf * pdf_hit_to_end);
 
           Color tmp_throughput =
               throughput *

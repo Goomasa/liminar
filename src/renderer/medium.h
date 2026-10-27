@@ -8,6 +8,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <vector>
 
 struct Medium {
   // homogeneous medium, no emission
