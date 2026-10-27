@@ -1,10 +1,10 @@
 #include "renderer.h"
-#include "config/parser.h"
 #include "integrator/integrator.h"
 #include "renderer/camera.h"
 #include "renderer/material.h"
 #include "scene/scene.h"
 #include "scene/texture.h"
+#include "setting/parser.h"
 #include "util/image.h"
 #include "util/utils.h"
 #include <cstdint>
@@ -417,8 +417,6 @@ void Renderer::bpt_render() const {
 
   omp_set_num_threads(threads_num);
 
-  std::hash<uint32_t> hash;
-
 #pragma omp parallel for schedule(dynamic, 1)
   for (int32_t v = 0; v < resolution_h; v++) {
     Integrator integrator = Integrator();
@@ -470,8 +468,6 @@ void Renderer::volbpt_render() const {
       1. / (double)(supersamples * supersamples * samples_per_spx);
 
   omp_set_num_threads(threads_num);
-
-  std::hash<uint32_t> hash;
 
 #pragma omp parallel for schedule(dynamic, 1)
   for (int32_t v = 0; v < resolution_h; v++) {

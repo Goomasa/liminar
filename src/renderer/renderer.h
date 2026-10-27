@@ -1,9 +1,9 @@
 #pragma once
 
 #include "camera.h"
-#include "config/parser.h"
 #include "renderer/material.h"
 #include "scene/scene.h"
+#include "setting/parser.h"
 #include "util/utils.h"
 #include <atomic>
 #include <chrono>

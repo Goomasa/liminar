@@ -101,8 +101,10 @@ std::vector<BptVertexInfo> gen_eye_path(Scene *scene, Camera *camera,
                   ? Ray(record.hitpoint + EPS * orienting_geom_normal, wi)
                   : Ray(record.hitpoint - EPS * orienting_geom_normal, wi);
     throughput =
-        throughput * prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
-                                      orienting_geom_normal, into, mode);
+        throughput *
+        prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
+                         orienting_geom_normal, into, mode) *
+        correct_shading_normal(wi, wo, orienting_geom_normal, orienting_normal);
     pdf_sample_omega =
         prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
   }
@@ -441,10 +443,12 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
       case ObjectType::OTHER: {
         Vec3 wo = normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
         throughput =
-            throughput * scene->primitives[eye_end->id].bxdf->eval(
-                             wo, -1. * test_dir, eye_end->uv,
-                             eye_end->orienting_normal,
-                             eye_end->geometry_normal, true, IntegrateMode::PT);
+            throughput *
+            scene->primitives[eye_end->id].bxdf->eval(
+                wo, -1. * test_dir, eye_end->uv, eye_end->orienting_normal,
+                eye_end->geometry_normal, true, IntegrateMode::PT) *
+            correct_shading_normal(-1. * test_dir, wo, eye_end->geometry_normal,
+                                   eye_end->orienting_normal);
       } break;
       case ObjectType::OTHER_TRANSPARENT: {
         Vec3 wo = normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
@@ -457,9 +461,12 @@ Integrator::bpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
                 : -1. * eye_end->geometry_normal;
         bool into = dot(orienting_normal, eye_end->obj_normal) > 0.;
         throughput =
-            throughput * scene->primitives[eye_end->id].bxdf->eval(
-                             wo, -1. * test_dir, eye_end->uv, orienting_normal,
-                             orienting_geom_normal, into, IntegrateMode::PT);
+            throughput *
+            scene->primitives[eye_end->id].bxdf->eval(
+                wo, -1. * test_dir, eye_end->uv, orienting_normal,
+                orienting_geom_normal, into, IntegrateMode::PT) *
+            correct_shading_normal(-1. * test_dir, wo, orienting_geom_normal,
+                                   orienting_normal);
       } break;
       case ObjectType::PINHOLE:
       case ObjectType::LENS: {

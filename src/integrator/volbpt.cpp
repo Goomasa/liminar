@@ -9,15 +9,15 @@
 #include <cstdint>
 #include <vector>
 
-inline double calc_g_term(const double len_sq, const Vec3 &dir_prev,
+inline double calc_g_term(const double len_sq, const Vec3 &dir,
                           const Vec3 &geom_normal, const Vec3 &prev_geom_normal,
                           const bool is_scatter, const bool prev_is_scatter) {
   double g_term = 1. / len_sq;
   if (!is_scatter) {
-    g_term *= dot(dir_prev, geom_normal);
+    g_term *= dot(dir, geom_normal);
   }
   if (!prev_is_scatter) {
-    g_term *= dot(dir_prev, prev_geom_normal);
+    g_term *= dot(dir, prev_geom_normal);
   }
 
   return fabs(g_term);
@@ -48,6 +48,11 @@ std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
   bool prev_is_scatter = false;
 
   for (uint32_t depth = 0;; depth++) {
+    if (throughput.is_lezero()) {
+      *final_value = INVALID_VEC;
+      break;
+    }
+
     double sampled_distance =
         now_medium ? now_medium->sample_distance(rnd) : INF;
     record.reset(sampled_distance);
@@ -141,9 +146,11 @@ std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
       now_ray = is_transmit
                     ? Ray(record.hitpoint - EPS * orienting_geom_normal, wi)
                     : Ray(record.hitpoint + EPS * orienting_geom_normal, wi);
-      throughput =
-          throughput * prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
-                                        orienting_geom_normal, into, mode);
+      throughput = throughput *
+                   prim->bxdf->eval(wo, wi, record.uv, orienting_normal,
+                                    orienting_geom_normal, into, mode) *
+                   correct_shading_normal(wi, wo, orienting_geom_normal,
+                                          orienting_normal);
       pdf_sample_omega =
           prim->bxdf->sampling_pdf(wo, wi, orienting_normal, into, mode);
 
@@ -168,10 +175,11 @@ std::vector<BptVertexInfo> gen_eye_volpath(Scene *scene, Camera *camera,
 
       bool into = dot(orienting_normal, record.normal) > 0.;
       Vec3 wi = now_medium->sample_phasefn(wo, rnd);
+      double phasefn_val = now_medium->eval_phasefn(wo, wi);
 
       now_ray = Ray(scatter_point, wi);
-      throughput = throughput * now_medium->sigma_s;
-      pdf_sample_omega = 1.;
+      throughput = throughput * now_medium->sigma_s * phasefn_val;
+      pdf_sample_omega = phasefn_val;
     }
     prev_is_scatter = !scene_hit;
   }
@@ -217,6 +225,11 @@ std::vector<BptVertexInfo> gen_light_volpath(Scene *scene, Camera *camera,
   bool prev_is_scatter = false;
 
   for (uint32_t depth = 0;; depth++) {
+    if (throughput.is_lezero()) {
+      result->value = INVALID_VEC;
+      break;
+    }
+
     double sampled_distance =
         now_medium ? now_medium->sample_distance(rnd) : INF;
     record.reset(sampled_distance);
@@ -339,9 +352,10 @@ std::vector<BptVertexInfo> gen_light_volpath(Scene *scene, Camera *camera,
                         record.uv, ObjectType::MEDIUM, now_medium));
 
       Vec3 wo = now_medium->sample_phasefn(wi, rnd);
+      double phasefn_val = now_medium->eval_phasefn(wi, wo);
       now_ray = Ray(scatter_point, wo);
-      throughput = throughput * now_medium->sigma_s;
-      pdf_sample_omega = 1.;
+      throughput = throughput * now_medium->sigma_s * phasefn_val;
+      pdf_sample_omega = phasefn_val;
     }
     prev_is_scatter = !scene_hit;
   }
@@ -577,10 +591,12 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
       case ObjectType::OTHER: {
         Vec3 wo = normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
         throughput =
-            throughput * scene->primitives[eye_end->id].bxdf->eval(
-                             wo, -1. * test_dir, eye_end->uv,
-                             eye_end->orienting_normal,
-                             eye_end->geometry_normal, true, IntegrateMode::PT);
+            throughput *
+            scene->primitives[eye_end->id].bxdf->eval(
+                wo, -1. * test_dir, eye_end->uv, eye_end->orienting_normal,
+                eye_end->geometry_normal, true, IntegrateMode::PT) *
+            correct_shading_normal(-1. * test_dir, wo, eye_end->geometry_normal,
+                                   eye_end->orienting_normal);
       } break;
       case ObjectType::OTHER_TRANSPARENT: {
         Vec3 wo = normalize(eye_path[en - 2].hitpoint - eye_end->hitpoint);
@@ -593,9 +609,12 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
                 : -1. * eye_end->geometry_normal;
         bool into = dot(orienting_normal, eye_end->obj_normal) > 0.;
         throughput =
-            throughput * scene->primitives[eye_end->id].bxdf->eval(
-                             wo, -1. * test_dir, eye_end->uv, orienting_normal,
-                             orienting_geom_normal, into, IntegrateMode::PT);
+            throughput *
+            scene->primitives[eye_end->id].bxdf->eval(
+                wo, -1. * test_dir, eye_end->uv, orienting_normal,
+                orienting_geom_normal, into, IntegrateMode::PT) *
+            correct_shading_normal(-1. * test_dir, wo, orienting_geom_normal,
+                                   orienting_normal);
       } break;
       case ObjectType::PINHOLE:
       case ObjectType::LENS: {
@@ -665,8 +684,8 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
         continue;
       }
 
-      if (eye_end->medium || light_end->medium) {
-        Medium *medium = eye_end->medium ? eye_end->medium : light_end->medium;
+      if (eye_end->medium && light_end->medium) {
+        Medium *medium = eye_end->medium;
         throughput =
             throughput * medium->calc_transmittance(light_end_to_eye_end.len());
       }
@@ -681,7 +700,7 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
           light_end->type == ObjectType::MEDIUM);
       double mis_weight =
           calc_volpath_mis_weight(scene, camera, eye_path, light_path, en, ln);
-      if (std::isnan(mis_weight) || mis_weight > INF || mis_weight < 0) {
+      if (std::isnan(mis_weight) || mis_weight > 1. || mis_weight <= 0.) {
         continue;
       }
 

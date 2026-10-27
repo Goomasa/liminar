@@ -1,5 +1,5 @@
 #include "parser.h"
-#include "config/lexer.h"
+#include "setting/lexer.h"
 #include <exception>
 #include <queue>
 #include <string>

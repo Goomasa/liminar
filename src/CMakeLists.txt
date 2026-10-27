@@ -9,8 +9,8 @@ set(exe_file
     scene/bvh.cpp
     scene/primitive.cpp
     scene/lobby.cpp
-    config/lexer.cpp
-    config/parser.cpp
+    setting/lexer.cpp
+    setting/parser.cpp
     util/image.cpp
     util/tg3helper.cpp
 )
