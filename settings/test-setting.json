@@ -31,8 +31,8 @@
       "sensor-dir":[0,0,-1],
       "sensor-to-lens":42,
       "lens-radius":2,
-      "focal-distance":96,
-      "w-scale":1
+      "focal-distance":90,
+      "w-scale":1.2
     }
   },
 

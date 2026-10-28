@@ -90,10 +90,9 @@ Vec3 Glass::sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
   }
 
   Vec3 refraction_vec = refraction_dir(dir_prev, normal, ior_prev, ior_next);
-  double reflectance =
-      schlick_fresnel(dir_prev, refraction_vec, normal, ior_prev, ior_next);
+  double prob = reflection_prob(dir_prev, normal, ior_prev, ior_next);
 
-  if (rnd->gen() < reflectance) {
+  if (rnd->gen() < prob) {
     return reflection_dir(dir_prev, normal);
   } else {
     return refraction_vec;
@@ -109,12 +108,12 @@ double Glass::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
   double r = ior_prev / ior_next;
 
   if (dot(dir_next, normal) < 0.) {
-    return 1. - schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
+    return 1. - reflection_prob(dir_prev, normal, ior_prev, ior_next);
   } else {
     if (!check_refraction(dir_prev, normal, r)) {
       return 1.;
     } else {
-      return schlick_fresnel(dir_prev, dir_next, normal, ior_prev, ior_next);
+      return reflection_prob(dir_prev, normal, ior_prev, ior_next);
     }
   }
 }
@@ -225,7 +224,7 @@ double MicroBtdf::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
     // refract
     Vec3 wm = get_half_vec(dir_prev, dir_next, 1. / r);
 
-    return (1. - schlick_fresnel(dir_prev, dir_next, wm, ior_prev, ior_next)) *
+    return (1. - reflection_prob(dir_prev, wm, ior_prev, ior_next)) *
            ggx_vndf(dir_prev, dir_next, wm, normal) *
            ggx_j(dir_prev, dir_next, wm, 1. / r);
   } else {
@@ -236,7 +235,7 @@ double MicroBtdf::sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
       return ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
              fabs(dot(dir_prev, normal));
     } else {
-      return schlick_fresnel(dir_prev, dir_next, wm, ior_prev, ior_next) *
+      return reflection_prob(dir_prev, wm, ior_prev, ior_next) *
              ggx_g1(dir_prev, normal) * ggx_d(wm, normal) * 0.25 /
              fabs(dot(dir_prev, normal));
     }
@@ -261,10 +260,9 @@ Vec3 MicroBtdf::sample(const Vec3 &dir_prev, const Vec3 &normal,
   }
 
   Vec3 refraction_vec = refraction_dir(dir_prev, wm, ior_prev, ior_next);
-  double reflectance =
-      schlick_fresnel(dir_prev, refraction_vec, wm, ior_prev, ior_next);
+  double prob = reflection_prob(dir_prev, wm, ior_prev, ior_next);
 
-  if (rnd->gen() < reflectance) {
+  if (rnd->gen() < prob) {
     return reflection_dir(dir_prev, wm);
   } else {
     return refraction_vec;

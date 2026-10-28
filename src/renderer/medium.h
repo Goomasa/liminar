@@ -22,7 +22,8 @@ struct Medium {
       : sigma_a(sigma_a), sigma_s(sigma_s), g(g) {
     sigma_t = sigma_a + sigma_s;
     scattering_albedo = sigma_s / sigma_t;
-    discrete_pdf = (Vec3(sigma_t.sum()) - sigma_t) / (sigma_t.sum() * 2);
+    // discrete_pdf = (Vec3(sigma_t.sum()) - sigma_t) / (sigma_t.sum() * 2);
+    discrete_pdf = Vec3(1. / 3.);
   }
 
   double sample_distance(Random *rnd) const {

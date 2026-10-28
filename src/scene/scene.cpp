@@ -198,6 +198,9 @@ void Scene::load_mtl(const auto &material, Primitive *prim,
     bxdf = std::make_unique<MixtureBrdf>(kd, pm, pr, color_texture_ptr);
     // bxdf.get()->display();
   } break;
+  case 13: {
+    bxdf = std::make_unique<NoSurface>(kd);
+  } break;
   default: {
     bxdf = std::make_unique<Lambertian>(kd, color_texture_ptr);
   } break;
@@ -529,12 +532,12 @@ bool Scene::intersect(Ray &ray, HitRecord *record,
 }
 
 void Scene::set_test_primitive() {
-  // std::unique_ptr<Shape> sphere =
-  //   std::make_unique<Sphere>(Point3(12, 7, -15), 7);
   std::unique_ptr<Shape> sphere =
-      std::make_unique<Sphere>(Point3(0, 25, 0), 15);
+      std::make_unique<Sphere>(Point3(12, 7, -15), 7);
+  // std::unique_ptr<Shape> sphere =
+  //   std::make_unique<Sphere>(Point3(0, 25, 0), 15);
   std::unique_ptr<Bxdf> bxdf =
-      std::make_unique<MixtureBrdf>(Color(1.), 0.2, 0.1);
+      std::make_unique<MicroBrdfAniso>(Color(1.), 0.3, 0.7);
   Primitive prim = Primitive(sphere.get(), bxdf.get(), primitives.size());
   // primitives.emplace_back(std::move(prim));
   // shapes.emplace_back(std::move(sphere));

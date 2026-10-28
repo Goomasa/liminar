@@ -382,7 +382,7 @@ double calc_volpath_sampling_pdf(const std::vector<const BptVertexInfo *> &path,
   } break;
   case ObjectType::OTHER: {
     if (!prev_from_v) {
-      break;
+      return 0.;
     }
 
     Vec3 dir_prev = normalize(prev_from_v->hitpoint - from_v->hitpoint);
@@ -393,7 +393,7 @@ double calc_volpath_sampling_pdf(const std::vector<const BptVertexInfo *> &path,
   case ObjectType::FULL_SPECUALR:
   case ObjectType::OTHER_TRANSPARENT: {
     if (!prev_from_v) {
-      break;
+      return 0.;
     }
 
     Vec3 dir_prev = normalize(prev_from_v->hitpoint - from_v->hitpoint);
@@ -486,6 +486,10 @@ double calc_volpath_mis_weight(Scene *scene, Camera *camera,
     double pdf_from_eye = calc_volpath_sampling_pdf(
         path, camera, scene, i, i + 1, i + 2, IntegrateMode::PT);
 
+    if (pdf_from_eye == 0.) {
+      return -1.;
+    }
+
     double q_from_light = roullete(i - 1);
     double q_from_eye = roullete(size - 2 - i);
 
@@ -538,7 +542,6 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
       gen_light_volpath(scene, camera, &lightpath_result, rnd);
 
   if (eyepath_result.value != INVALID_VEC) {
-    double total_pdf = eye_path[eye_path.size() - 1].pdf;
     double mis_weight = calc_volpath_mis_weight(scene, camera, eye_path,
                                                 light_path, eye_path.size(), 0);
     bpt_results.emplace_back(PixelResult(
@@ -546,7 +549,6 @@ Integrator::volbpt_integrate(Scene *scene, Camera *camera, const Point3 &px_pos,
   }
 
   if (lightpath_result.value != INVALID_VEC) {
-    double total_pdf = light_path[light_path.size() - 1].pdf;
     double mis_weight = calc_volpath_mis_weight(
         scene, camera, eye_path, light_path, 0, light_path.size());
     bpt_results.emplace_back(lightpath_result.px_u, lightpath_result.px_v,

@@ -87,6 +87,17 @@ protected:
     return 1. - r_pn * r_pn * (1. - d * d) >= 0.;
   }
 
+  inline static double reflection_prob(const Vec3 &dir_prev, const Vec3 &normal,
+                                       const double ior_prev,
+                                       const double ior_next) {
+    Vec3 refraction_vec = refraction_dir(dir_prev, normal, ior_prev, ior_next);
+    double a = ior_prev - ior_next, b = ior_prev + ior_next;
+    double f0 = (a * a) / (b * b);
+    double d = ior_prev > ior_next ? fabs(dot(refraction_vec, normal))
+                                   : fabs(dot(dir_prev, normal));
+    return f0 + (1. - f0) * pow(1. - d, 5);
+  }
+
   inline static double schlick_fresnel(const Vec3 &dir_prev,
                                        const Vec3 &dir_next, const Vec3 &normal,
                                        const double ior_prev,
@@ -564,4 +575,38 @@ private:
     double t = 0.08 * specular;
     return metallic * color + (1. - metallic) * Vec3(t);
   }
+};
+
+class NoSurface : public Bxdf {
+public:
+  NoSurface(const Color &base_color) : Bxdf(base_color, nullptr) {}
+
+  Color eval(const Vec3 &wo, const Vec3 &wi, const Vec2 &uv, const Vec3 &normal,
+             const Vec3 &geometry_normal, const bool into,
+             const IntegrateMode &mode) const override {
+    return check_light_leak(wi, wo, normal, geometry_normal) &&
+                   !check_block_surface(wi, wo, geometry_normal)
+               ? get_color(uv) / fabs(dot(wi, normal))
+               : 0.;
+  }
+
+  Vec3 sample(const Vec3 &dir_prev, const Vec3 &normal, const bool into,
+              Random *rnd, const IntegrateMode &mode) const override {
+    return -1. * dir_prev;
+  }
+
+  double sampling_pdf(const Vec3 &dir_prev, const Vec3 &dir_next,
+                      const Vec3 &normal, const bool into,
+                      const IntegrateMode &mode) const override {
+    return 1.;
+  }
+
+  bool is_specular() const override { return true; }
+
+  void display() const override {
+    std::cout << "no surface";
+    base_color.display();
+  }
+
+  ObjectType get_objtype() const override { return ObjectType::FULL_SPECUALR; }
 };
